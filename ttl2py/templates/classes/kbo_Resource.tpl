@@ -61,7 +61,7 @@ class Resource(ABC):
                 if value is None or attr.startswith('_'):
                     continue
                 try:
-                    if value._value is None:
+                    if value._value in ['', None]:
                         continue
                     properties[value.key()] = value.__json_struct__()
                 except Exception as e:
