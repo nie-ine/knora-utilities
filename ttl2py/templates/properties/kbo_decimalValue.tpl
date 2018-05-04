@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
+from .hasValue import HasValue
 
 """
 test.py: a simple program to test the abilities of py-redis
@@ -24,7 +25,7 @@ class DecimalValue(HasValue):
     def __init__(self, integer):
         super().__init__(int(integer))
         self._name = 'DecimalValue'
-        self._property_type = 'decimal_value'}
+        self._property_type = 'decimal_value'
 
     def __json_struct__(self):
         """

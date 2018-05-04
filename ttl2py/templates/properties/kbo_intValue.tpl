@@ -25,7 +25,7 @@ class IntValue(HasValue):  # Subclass int to get handy functions
     def __init__(self, integer):
         super().__init__(int(integer))
         self._name = 'IntValue'
-        self._property_type = 'int_value'}
+        self._property_type = 'int_value'
 
     def __json_struct__(self):
         """

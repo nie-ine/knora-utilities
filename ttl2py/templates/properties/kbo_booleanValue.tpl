@@ -30,7 +30,7 @@ class HasBoolean(HasValue):  # Subclass int to get handy functions
         """
         super(HasBoolean, self).__init__(bool(boolean))
         self._name = "hasBoolean"
-        self._property_type: 'boolean_value'}
+        self._property_type: 'boolean_value'
 
 #    def __repr__(self):
 #        """

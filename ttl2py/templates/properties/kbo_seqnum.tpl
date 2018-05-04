@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-from .int_value import IntValue
+from .intValue import IntValue
 """
 seqnum: definition to handle Knora Base Ontology (KBO)
 """
@@ -28,7 +28,7 @@ class Seqnum(IntValue):  # Subclass int to get handy functions
         """
         super(Seqnum, self).__init__(number)
         self._name = 'seqnum'
-        self._property_type = 'seqnum'}
+        self._property_type = 'seqnum'
 
 #    def __repr__(self):
 #        """
