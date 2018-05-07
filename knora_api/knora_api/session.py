@@ -289,6 +289,56 @@ class Session(object):
                 traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
         return None
 
+    def post_v1_value(self, project_id, prop, res_id, res_type, value):
+        """
+        Set a resource's value
+
+        :param project_id:
+        :param prop:
+        :param res_id:
+        :param res_type: the value's resource type
+        :param value: the value in json-structure if necessary
+        :return:
+        """
+        """
+    
+         {"interval_value": [0, 0],
+          "res_id": "http://data.knora.org/a-thing",
+          "prop": "http://www.knora.org/ontology/anything#hasInterval",
+          "project_id": "http://data.knora.org/projects/anything"};
+
+        {"richtext_value": {"utf8str": "test"},
+          "res_id": "http://data.knora.org/a-thing",
+          "prop": "http://www.knora.org/ontology/anything#hasText",
+          "project_id": "http://data.knora.org/projects/anything"};
+
+        {"richtext_value": {
+            "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<text><strong>Test</strong><br/>text</text>",
+            "mapping_id": "http://rdfh.ch/standoff/mappings/StandardMapping"},
+         "res_id": "http://data.knora.org/a-thing",
+         "prop": "http://www.knora.org/ontology/anything#hasText",
+         "project_id": "http://data.knora.org/projects/anything"};
+        """
+
+        if res_type not in KNORA_V1.VALUE_TYPES:
+            return None
+
+        try:
+            url = "http://{}:{}{}".format(self.host, self.port, KNORA_V1.V1_VALUE)
+            data = {"project_id": project_id,
+                    "prop": prop,
+                    "res_id": res_id,
+                    res_type: value}
+            response = self._post(url=url, json=data)
+            return response
+        except Exception as e:
+            print(r.content.decode('utf-8'))
+            print(e)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
+
+        return None
+
     # wrappers for existing functions to make the live more easy
 
     def get_projects(self):
@@ -333,7 +383,7 @@ class Session(object):
     def get_vocabularies(self):
         """
 
-        just a wrapper of 'get_v1_vocabularies'
+        just a wrapper for 'get_v1_vocabularies'
         :return:
         """
 
@@ -341,7 +391,7 @@ class Session(object):
 
     def post_resource(self, json, file_name=None, **kwargs):
         """
-        just a wrapper for the 'post_v1_resource'
+        just a wrapper for 'post_v1_resource'
 
         :param json:
         :param file_name:
@@ -349,6 +399,20 @@ class Session(object):
         """
 
         return self. post_v1_resource(json, file_name, **kwargs)
+
+    def post_value(self, project_id, prop, res_id, res_type, value):
+        """
+        just a wrapper for 'post_v1_value'
+
+        :param project_id:
+        :param prop:
+        :param res_id:
+        :param res_type:
+        :param value:
+        :return:
+        """
+
+        return self.post_v1_value(project_id, prop, res_id, res_type, value)
 
     # some utility functions ...
 
