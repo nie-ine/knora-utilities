@@ -30,22 +30,15 @@ class LinkValue(HasValue):
         super(HasLinkTo, self).__init__(link)
         self._property_type = 'link_value'
 
-    def __repr__(self):
+    def __setattr__(self, key, value):
         """
 
+        :param key:
+        :param value:
         :return:
         """
-        try:
-            return """['link_value': '{:s}']""".format(self._value)
-        except TypeError:
-            return
 
-    def __str__(self):
-        """
+        if key == '_value' and value is not None and not isinstance(value, str):
+            raise TypeError("Wrong data type for LinkValue")
+        super().__setattr__(key, value)
 
-        :return:
-        """
-        try:
-            return """['link_value': '{:s}']""".format(self._value)
-        except TypeError:
-            return

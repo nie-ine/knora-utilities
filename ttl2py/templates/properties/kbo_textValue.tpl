@@ -50,14 +50,17 @@ class TextValue(HasValue):  # Subclass string to get handy functions
         self._property_type = 'richtext_value'
         self._value_type = 'utf8str'
 
-#    def __repr__(self):
-#        return """[{{'{:s}': {{'utf8str': "{:s}"}}}]""".format(self._json_type, super().__repr__())
+    def __setattr__(self, key, value):
+        """
 
-#    def __str__(self):
-#        return """[{{'{:s}': {{'utf8str': "{:s}"}}}]""".format(self._json_type, super().__str__())
+        :param key:
+        :param value:
+        :return:
+        """
 
-#    def json(self):
-#        return [{self._json_type: {'utf8str': self._value}}]
+        if key == '_value' and value is not None and not isinstance(value, str):
+            raise TypeError("Wrong data type for textValue")
+        super().__setattr__(key, value)
 
     def __json_struct__(self):
         """

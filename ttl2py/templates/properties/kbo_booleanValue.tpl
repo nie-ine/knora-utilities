@@ -32,34 +32,15 @@ class HasBoolean(HasValue):  # Subclass int to get handy functions
         self._name = "hasBoolean"
         self._property_type: 'boolean_value'
 
-#    def __repr__(self):
-#        """
-#
-#        :return:
-#        """
-#        if self._value or self._value is False:
-#            return """[{{'boolean_value': {}}}]""".format(self._value)
+    def __setattr__(self, key, value):
+        """
 
-#    def __str__(self):
-#        """
-#
-#        :return:
-#        """
-#        if self._value or self._value is False:
-#            return """[{{'boolean_value': {}}}]""".format(self._value)
+        :param key:
+        :param value:
+        :return:
+        """
 
-#    def __json_struct__(self):
-#        """
-#
-#        :return:
-#        """
-#
-#        return [{self._json['value_type']: self._value}]
+        if key == '_value' and value is not None:
+            value = bool(value)
 
-#    def json(self):
-#        """
-#
-#        :return:
-#        """
-#        if self._value or self._value is False:
-#            return [{'boolean_value': self._value}]
+        super().__setattr__(key, value)

@@ -27,6 +27,19 @@ class DecimalValue(HasValue):
         self._name = 'DecimalValue'
         self._property_type = 'decimal_value'
 
+    def __setattr__(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
+
+        if key == '_value' and value is not None:
+            if not isinstance(value, float) and not isinstance(value, int):
+                raise TypeError("Wrong data type for DecimalValue")
+        super().__setattr__(key, value)
+
     def __json_struct__(self):
         """
 

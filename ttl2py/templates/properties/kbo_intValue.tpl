@@ -27,6 +27,18 @@ class IntValue(HasValue):  # Subclass int to get handy functions
         self._name = 'IntValue'
         self._property_type = 'int_value'
 
+    def __setattr__(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
+
+        if key == '_value' and value is not None and not isinstance(value, int):
+            raise TypeError("Wrong data type for IntValue")
+        super().__setattr__(key, value)
+
     def __json_struct__(self):
         """
 

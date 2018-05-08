@@ -30,6 +30,18 @@ class HasLinkTo(HasValue):  # Subclass int to get handy functions
         super(HasLinkTo, self).__init__(link)
         self._property_type = 'link_value'
 
+    def __setattr__(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
+
+        if key == '_value' and value is not None and not isinstance(value, str):
+            raise TypeError("Wrong data type for LinkValue")
+        super().__setattr__(key, value)
+
     def __repr__(self):
         """
 

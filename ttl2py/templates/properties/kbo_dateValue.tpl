@@ -30,6 +30,19 @@ class DateValue(HasValue):  # Subclass int to get handy functions
         self._property_type = 'date_value'
         self.calendar_type = 'JULIAN' if calendar_type in ['j', 'J'] else 'GREGORIAN'
 
+    def __setattr__(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
+
+        if key == '_value' and value is not None and not isinstance(value, str):
+            ### TODO: check a date's format (Nice to have)
+            raise TypeError("Wrong data type for DateValue")
+        super().__setattr__(key, value)
+
     def __repr__(self):
         """
 
