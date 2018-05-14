@@ -4,6 +4,7 @@
 import getopt
 import os
 import pathlib
+import re
 import sys
 from os.path import commonprefix, isfile, exists
 from string import Template
@@ -31,6 +32,22 @@ _KNORA_NS = Namespace("http://www.knora.org/ontology/")
 _KBO_NS = Namespace("http://www.knora.org/ontology/knora-base")
 _DIRSEP = os.sep
 _TIMESTAMP = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def is_shortcode(code):
+    """
+    check it the given code is a shortcode
+
+    :param code:
+    :return:
+    """
+    p = re.compile('[0-9A-F]{4}')
+    try:
+        if p.match(code):
+            return True
+    except TypeError:
+        pass
+    return False
 
 
 def split_ns(ns_name):
@@ -467,10 +484,9 @@ def generate_import(source, target):
     return None
 
 
-def create_classes(ontology_home, template_file, graph, mappings, src_filename):
+def create_classes(template_file, graph, mappings, src_filename):
     """
 
-    :param ontology_home:
     :param template_file:
     :param graph:
     :param mappings:
@@ -491,9 +507,8 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
         class_properties = ""
 
         class_ns, class_fragment = ns_fragement(class_uri)
-        class_dir = "{}{}{ps}classes".format(ontology_home,
-                                             mappings[class_ns],
-                                             ps=_DIRSEP)
+        class_dir = "{}{ps}classes".format(mappings[class_ns]['path'],
+                                           ps=_DIRSEP)
 
         cls_dependencies = class_dependencies(graph=graph,
                                               uri=class_uri,
@@ -538,7 +553,7 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
             dep_name = to_class_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in cls_data:
-                alias = "{}_{}".format(generate_alias(mappings[ns]), dep_name)
+                alias = "{}_{}".format(generate_alias(mappings[ns]['rel_path']), dep_name)
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
             cls_data[dep_name].append((ns, alias))
@@ -547,8 +562,8 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
         modules_to_import = []
         for key, value in cls_data.items():
             for item in value:
-                cur_path = generate_import("{}{ps}classes".format(mappings[class_ns], ps=_DIRSEP),
-                                           "{}{ps}classes".format(mappings[item[0]], ps=_DIRSEP))
+                cur_path = generate_import("{}{ps}classes".format(mappings[class_ns]['rel_path'], ps=_DIRSEP),
+                                           "{}{ps}classes".format(mappings[item[0]]['rel_path'], ps=_DIRSEP))
                 import_str = "from {}.{} import {}".format(cur_path, key, to_class_name(key))
                 if item[1]:
                     tmp.append(item[1])
@@ -564,7 +579,7 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
             dep_name = to_property_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in prop_data:
-                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns])), dep_name)
+                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns]['rel_path'])), dep_name)
             if dep_name not in prop_data:
                 prop_data[dep_name] = []
             prop_data[dep_name].append((ns, alias))
@@ -574,8 +589,8 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
         cls_properties = []
         for key, value in prop_data.items():
             for item in value:
-                cur_path = generate_import("{}{ps}classes".format(mappings[class_ns], ps=_DIRSEP),
-                                           "{}{ps}properties".format(mappings[item[0]], ps=_DIRSEP))
+                cur_path = generate_import("{}{ps}classes".format(mappings[class_ns]['rel_path'], ps=_DIRSEP),
+                                           "{}{ps}properties".format(mappings[item[0]]['rel_path'], ps=_DIRSEP))
                 import_str = "from {}.{} import {}".format(cur_path, key, to_class_name(key))
                 arg.append(key)
                 arg_comment.append("{}:param {}:".format(" "*8, key))
@@ -610,10 +625,9 @@ def create_classes(ontology_home, template_file, graph, mappings, src_filename):
         write_file(filename=filename, content=content)
 
 
-def create_properties(ontology_home, template_file, graph, mappings, src_filename):
+def create_properties(template_file, graph, mappings, src_filename):
     """
 
-    :param ontology_home:
     :param template_file:
     :param graph:
     :param mappings:
@@ -632,7 +646,7 @@ def create_properties(ontology_home, template_file, graph, mappings, src_filenam
         property_name = ''
 
         property_ns, property_fragment = ns_fragement(property_uri)
-        property_dir = "{}{}{ps}properties".format(ontology_home, mappings[property_ns], ps=_DIRSEP)
+        property_dir = "{}{ps}properties".format(mappings[property_ns]['path'], ps=_DIRSEP)
 
         cls_dependencies = property_class_dependencies(graph=graph, uri=property_uri, allowed_ns=known_namespaces)
 
@@ -657,7 +671,7 @@ def create_properties(ontology_home, template_file, graph, mappings, src_filenam
             dep_name = to_class_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in cls_data:
-                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns])), dep_name)
+                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns]['rel_path'])), dep_name)
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
             cls_data[dep_name].append((ns, alias))
@@ -666,8 +680,8 @@ def create_properties(ontology_home, template_file, graph, mappings, src_filenam
         parent_properties = []
         for key, value in cls_data.items():
             for item in value:
-                cur_path = generate_import("{}{ps}properties".format(mappings[property_ns], ps=_DIRSEP),
-                                           "{}{ps}properties".format(mappings[item[0]], ps=_DIRSEP))
+                cur_path = generate_import("{}{ps}properties".format(mappings[property_ns]['rel_path'], ps=_DIRSEP),
+                                           "{}{ps}properties".format(mappings[item[0]]['rel_path'], ps=_DIRSEP))
                 import_str = "from {}.{} import {}".format(cur_path, to_property_name(key), to_class_name(key))
                 if item[1]:
                     parent_properties.append(item[1])
@@ -798,7 +812,7 @@ def determine_namespaces(files):
     return list(namespaces)
 
 
-def namespace_file_structure(namespaces):
+def namespace_file_structure(namespaces, target_dir):
     """
 
     :param namespaces: list of namespaces to convert into a file structure
@@ -810,8 +824,32 @@ def namespace_file_structure(namespaces):
         tmp_path = namespace.replace('://', '/').replace('.', '_').replace('-', '_')
         mapping[namespace] = tmp_path
 
-    return minimize_file_structure(mapping)
+    min_fs = minimize_file_structure(mapping)
+    abc = {}
+    for key, value in min_fs.items():
+        path = value
+        path_elems = path.split(_DIRSEP)
+        cur_dir = path_elems[-1]
+        shortcode = None
+        try:
+            shortcode = path_elems[-2]
+            if is_shortcode(shortcode):
+                del path_elems[-2]
+                path = _DIRSEP.join(path_elems)
+        except IndexError:
+            pass
 
+        if shortcode:
+            project_id = "http://rdfh.ch/projects/{}".format(shortcode)
+        else:
+            project_id = "http://rdfh.ch/projects/{}".format(cur_dir)
+
+        abc[key] = {'path': '{}{}'.format(target_dir, path),
+                    'rel_path': path,
+                    'project_id': project_id}
+
+    return abc
+#    return min_fs
 
 def minimize_file_structure(ns_fs_mapping):
     """
@@ -840,17 +878,13 @@ def create_ns_structure(ns_structure):
     :return:
     """
 
-    for path in ns_structure:
-
+    for key, value in ns_structure.items():
         for directory in ['classes', 'properties']:
-            cur_dir = "{}{}{}".format(path, _DIRSEP, directory)
-            pathlib.Path(cur_dir).mkdir(parents=True, exist_ok=True)
+            current_dir = "{}{}{}".format(value['path'], _DIRSEP, directory)
+            pathlib.Path(current_dir).mkdir(parents=True, exist_ok=True)
 
-        cur_dir = path.split('/')[-1]
-        ontology_ns = "http://www.knora.org/ontology/{}".format(cur_dir)
-        project_id = "http://rdfh.ch/projects/{}".format(cur_dir)
-        write_file(filename="{}{}__init__.py".format(path, _DIRSEP),
-                   content="ONTOLOGY_NS = '{}'\nPROJECT_ID = '{}'\n".format(ontology_ns, project_id))
+        write_file(filename="{}{}__init__.py".format(value['path'], _DIRSEP),
+                   content="ONTOLOGY_NS = '{}'\nPROJECT_ID = '{}'\n".format(key, value['project_id']))
 
     return
 
@@ -921,14 +955,13 @@ def main(argv):
         return 2
 
     namespaces = determine_namespaces(files_to_process)
-    ns_fs_mappings = namespace_file_structure(namespaces)
+    ns_fs_mappings = namespace_file_structure(namespaces, target_dir)
 
-    fs_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
-    create_ns_structure(fs_structure)
+#    fs_ns_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
+    create_ns_structure(ns_fs_mappings)
 
     create_kbo(template_dir=template_dir,
-               target_dir="{}{}".format(target_dir,
-                                        ns_fs_mappings['http://www.knora.org/ontology/knora-base']))
+               target_dir=ns_fs_mappings['http://www.knora.org/ontology/knora-base']['path'])
 
     data = {'template_dir': template_dir, 'ps': _DIRSEP}
     class_template = "{template_dir}{ps}classes{ps}Resource.tpl".format(**data)
@@ -944,13 +977,11 @@ def main(argv):
 
         # ns = get_namespaces(graph=graph)
         src_filename = file.split(_DIRSEP)[-1]
-        create_classes(ontology_home=target_dir,
-                       template_file=class_template,
+        create_classes(template_file=class_template,
                        graph=graph,
                        mappings=ns_fs_mappings,
                        src_filename=src_filename)
-        create_properties(ontology_home=target_dir,
-                          template_file=property_template,
+        create_properties(template_file=property_template,
                           graph=graph,
                           mappings=ns_fs_mappings,
                           src_filename=src_filename)
