@@ -701,7 +701,7 @@ def create_properties(template_file, graph, mappings, src_filename):
                 import_str = "from {}.{} import {}".format(cur_path, to_property_name(key), to_class_name(key))
                 if item[1]:
                     parent_properties.append(item[1])
-                    modules_to_import.append("{} as {}".format(import_str, to_class_name(item[1])))
+                    modules_to_import.append("{} as {}".format(import_str, item[1]))
                 else:
                     parent_properties.append(key)
                     modules_to_import.append(import_str)
