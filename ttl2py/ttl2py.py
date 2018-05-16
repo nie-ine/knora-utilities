@@ -718,7 +718,7 @@ def create_properties(template_file, graph, mappings, src_filename):
                                             class_comment=class_comment,
                                             namespace=property_ns,
                                             name=property_name)
-        filename = "{}{ps}{}.py".format(property_dir, property_name, ps=_DIRSEP)
+        filename = "{}{ps}{}.py".format(property_dir, to_property_name(property_name), ps=_DIRSEP)
         write_file(filename=filename, content=content)
 
 
