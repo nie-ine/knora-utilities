@@ -45,7 +45,7 @@ class TextValue(HasValue):  # Subclass string to get handy functions
 
         :param text:
         """
-        super(TextValue, self).__init__(text)
+        super().__init__(text)
         self._name = "TextValue"
         self._property_type = 'richtext_value'
         self._value_type = 'utf8str'

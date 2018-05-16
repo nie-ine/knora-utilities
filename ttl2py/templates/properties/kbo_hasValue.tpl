@@ -23,16 +23,6 @@ class HasValue(object):
 
     """
 
-    # def __new__(cls, string):
-    #     """
-    #
-    #     :param string:
-    #     :return:
-    #     """
-    #     if string is not None:
-    #         return super(HasValue, cls).__new__(cls, string)
-    #     return None
-
     def __init__(self, value):
         self._namespace = "http://www.knora.org/ontology/knora-base"
         self._name = "hasValue"

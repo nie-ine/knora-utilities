@@ -18,7 +18,7 @@ __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
 
 
-class HasBoolean(HasValue):  # Subclass int to get handy functions
+class BooleanValue(HasValue):
     """
 
     """
@@ -28,8 +28,8 @@ class HasBoolean(HasValue):  # Subclass int to get handy functions
 
         :param boolean:
         """
-        super(HasBoolean, self).__init__(bool(boolean))
-        self._name = "hasBoolean"
+        super().__init__(bool(boolean))
+        self._name = "BooleanValue"
         self._property_type: 'boolean_value'
 
     def __setattr__(self, key, value):

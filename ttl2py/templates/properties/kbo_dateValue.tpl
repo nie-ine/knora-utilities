@@ -26,7 +26,7 @@ class DateValue(HasValue):  # Subclass int to get handy functions
 
         :param string:
         """
-        super(DateValue, self).__init__(date_string)
+        super().__init__(date_string)
         self._property_type = 'date_value'
         self.calendar_type = 'JULIAN' if calendar_type in ['j', 'J'] else 'GREGORIAN'
 

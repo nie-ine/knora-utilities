@@ -28,6 +28,7 @@ class HasLinkToValue(HasValue):
         :param string:
         """
         super().__init__(link)
+        self._name = 'LinkValue'
         self._property_type = 'link_value'
 
     def __setattr__(self, key, value):
