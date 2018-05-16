@@ -553,7 +553,8 @@ def create_classes(template_file, graph, mappings, src_filename):
             dep_name = to_class_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in cls_data:
-                alias = "{}_{}".format(generate_alias(mappings[ns]['rel_path']), dep_name)
+                # alias = "{}_{}".format(generate_alias(mappings[ns]['rel_path']), dep_name)
+                alias = "{}_{}".format(mappings[ns]['name'], dep_name)
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
             cls_data[dep_name].append((ns, alias))
@@ -574,15 +575,25 @@ def create_classes(template_file, graph, mappings, src_filename):
         sub_class_of = ", ".join(tmp) if tmp else ''
 
         prop_data = {}
+        prop_external_dependencies = set()
         for dependency in prop_dependencies:
             ns, dep_name = ns_fragement(dependency)
+            if ns != class_ns:
+                prop_external_dependencies.add(dependency)
+                continue
             dep_name = to_property_name(dep_name)
-            alias = None
-            if dep_name == class_name or dep_name in prop_data:
-                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns]['rel_path'])), dep_name)
             if dep_name not in prop_data:
                 prop_data[dep_name] = []
-            prop_data[dep_name].append((ns, alias))
+            prop_data[dep_name].append((ns, None))
+        for dependency in prop_external_dependencies:
+            ns, dep_name = ns_fragement(dependency)
+            dep_name = to_property_name(dep_name)
+            ns_prefix = None
+            if dep_name == class_name or dep_name in prop_data:
+                ns_prefix = mappings[ns]['name']
+            if dep_name not in prop_data:
+                prop_data[dep_name] = []
+            prop_data[dep_name].append((ns, ns_prefix))
 
         arg = []
         arg_comment = []
@@ -592,15 +603,20 @@ def create_classes(template_file, graph, mappings, src_filename):
                 cur_path = generate_import("{}{ps}classes".format(mappings[class_ns]['rel_path'], ps=_DIRSEP),
                                            "{}{ps}properties".format(mappings[item[0]]['rel_path'], ps=_DIRSEP))
                 import_str = "from {}.{} import {}".format(cur_path, key, to_class_name(key))
-                arg.append(key)
-                arg_comment.append("{}:param {}:".format(" "*8, key))
-                cls_properties.append("{}self.{} = {}({})".format(" "*8, key, to_class_name(key), key))
+
                 if item[1]:
-                    arg_comment.append(item[1])
-                    modules_to_import.append("{} as {}\n".format(import_str, item[1]))
+                    key_prop = '{}_{}'.format(item[1], key)
+                    key_class = '{}_{}'.format(item[1], to_class_name(key))
+                    arg.append(key_prop)
+                    arg_comment.append("{}:param {}:".format(" " * 8, key_prop))
+                    modules_to_import.append("{} as {}".format(import_str, key_class))
+                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key_prop, key_class, key_prop))
                 else:
+                    arg.append(key)
+                    arg_comment.append("{}:param {}:".format(" " * 8, key))
                     tmp.append(key)
                     modules_to_import.append(import_str)
+                    cls_properties.append("{}self.{} = {}({})".format(" "*8, key, to_class_name(key), key))
 
         if arg:
             arg_init = ["{}=None".format(item) for item in arg]
@@ -671,7 +687,7 @@ def create_properties(template_file, graph, mappings, src_filename):
             dep_name = to_class_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in cls_data:
-                alias = "{}_{}".format(to_class_name(generate_alias(mappings[ns]['rel_path'])), dep_name)
+                alias = "{}_{}".format(mappings[ns]['name'], dep_name)
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
             cls_data[dep_name].append((ns, alias))
@@ -825,31 +841,33 @@ def namespace_file_structure(namespaces, target_dir):
         mapping[namespace] = tmp_path
 
     min_fs = minimize_file_structure(mapping)
-    abc = {}
+    ns_mapping = {}
     for key, value in min_fs.items():
         path = value
         path_elems = path.split(_DIRSEP)
         cur_dir = path_elems[-1]
-        shortcode = None
+        short_code = None
         try:
-            shortcode = path_elems[-2]
-            if is_shortcode(shortcode):
+            short_code = path_elems[-2]
+            if is_shortcode(short_code):
                 del path_elems[-2]
                 path = _DIRSEP.join(path_elems)
         except IndexError:
             pass
 
-        if shortcode:
-            project_id = "http://rdfh.ch/projects/{}".format(shortcode)
+        if short_code:
+            project_id = "http://rdfh.ch/projects/{}".format(short_code)
         else:
             project_id = "http://rdfh.ch/projects/{}".format(cur_dir)
 
-        abc[key] = {'path': '{}{}'.format(target_dir, path),
-                    'rel_path': path,
-                    'project_id': project_id}
+        ns_mapping[key] = {'path': '{}{}'.format(target_dir, path),
+                           'rel_path': path,
+                           'name': cur_dir,
+                           'short_code': short_code,
+                           'project_id': project_id}
 
-    return abc
-#    return min_fs
+    return ns_mapping
+
 
 def minimize_file_structure(ns_fs_mapping):
     """
