@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
+from ..properties.hasValue import HasValue
 
 """
 definition of abstract class knora-base:Resource
