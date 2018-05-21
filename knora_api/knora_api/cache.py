@@ -84,7 +84,7 @@ class Cache(object):
             cur = self._connection.cursor()
             cur.execute("SELECT value, checksum FROM Cache WHERE key=:key;", {'key': key})
             record = cur.fetchone()
-            return record[0] if record else None
+            return record[0] if record else (None, None)
         except Exception as e:
             print(e)
         return None
