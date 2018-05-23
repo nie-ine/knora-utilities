@@ -22,8 +22,8 @@ class DecimalValue(HasValue):
 
     """
 
-    def __init__(self, integer):
-        super().__init__(int(integer))
+    def __init__(self, decimal):
+        super().__init__(decimal)
         self._name = 'DecimalValue'
         self._property_type = 'decimal_value'
 
