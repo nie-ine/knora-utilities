@@ -113,6 +113,7 @@ class Session(object):
         :return:
         """
 
+        r = None
         try:
             r = self._session.get(url=url, params=params, **kwargs)
             r.raise_for_status()
@@ -135,6 +136,7 @@ class Session(object):
         :return:
         """
 
+        r = None
         try:
             r = self._session.post(url=url, data=data, json=json, **kwargs)
             if r.status_code != 200:
@@ -270,7 +272,7 @@ class Session(object):
             url = "http://{}:{}{}".format(self.host, self.port, KNORA_V1.V1_RESOURCES)
 
             if file_name:
-                data = dumps(json).encode('utf-8')
+                data = {'json': dumps(json).encode('utf-8')}
                 file_type = file_name.split('.')[-1]
                 mime_type = self.get_mime_type(file_type)
                 files = {'file': (file_name, open(file_name, 'rb'), mime_type)}
