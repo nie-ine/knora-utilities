@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import code
 import getopt
 import os
 import pathlib
@@ -15,7 +15,6 @@ from rdflib.namespace import Namespace, NamespaceManager
 
 from modules.filesystem import read_file, write_file
 
-
 __author__ = "Sascha KAUFMANN"
 __copyright__ = "Copyright 2018, NIE-INE"
 __credits__ = []
@@ -24,7 +23,6 @@ __version__ = "0.0.2"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Production"
-
 
 header_information = None
 
@@ -98,8 +96,8 @@ def import_path(source_path, target_path):
             index += 1
         else:
             break
-    path = "{}{}".format("."*(len(target_parts)-index),
-                         ".".join(target_parts[-(len(target_parts)-index)]))
+    path = "{}{}".format("." * (len(target_parts) - index),
+                         ".".join(target_parts[-(len(target_parts) - index)]))
     return path
 
 
@@ -406,7 +404,7 @@ def property_class_dependencies(graph, uri, allowed_ns=None):
             if isinstance(o, URIRef):
                 str_o = str(o)
                 if str_o == 'http://www.knora.org/ontology/knora-base#hasValue':
-                    for (p , o) in graph.predicate_objects(subject=URIRef(uri)):
+                    for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
                         b = 0
                         if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
                             str_o = str(o)
@@ -475,8 +473,8 @@ def generate_import(source, target):
             return ""
         upwards = len(source_parts) - len(common_parts) + 1
         downwards = len(target_parts) - len(common_parts)
-        return "{}{}".format("."*upwards,
-                             ".".join(target_parts[len(target_parts)-downwards:]))
+        return "{}{}".format("." * upwards,
+                             ".".join(target_parts[len(target_parts) - downwards:]))
     except (AttributeError, Exception) as e:
         print(source, target)
         print(e)
@@ -616,7 +614,7 @@ def create_classes(template_file, graph, mappings, src_filename):
                     arg_comment.append("{}:param {}:".format(" " * 8, key))
                     tmp.append(key)
                     modules_to_import.append(import_str)
-                    cls_properties.append("{}self.{} = {}({})".format(" "*8, key, to_class_name(key), key))
+                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key, to_class_name(key), key))
 
         if arg:
             arg_init = ["{}=None".format(item) for item in arg]
@@ -770,7 +768,7 @@ def create_dirstruct(home_dir, ns):
     filename = "{}{ps}templates{ps}__init__.tpl".format(home_dir, ps=_DIRSEP)
     template = read_template(filename=filename)
     content = template.substitute(namespace=ns)
-    filename="{}{}__init__.py".format(cur_dir, _DIRSEP)
+    filename = "{}{}__init__.py".format(cur_dir, _DIRSEP)
     print(filename, content)
     write_file(filename=filename, content=content)
 
@@ -975,7 +973,7 @@ def main(argv):
     namespaces = determine_namespaces(files_to_process)
     ns_fs_mappings = namespace_file_structure(namespaces, target_dir)
 
-#    fs_ns_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
+    #    fs_ns_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
     create_ns_structure(ns_fs_mappings)
 
     create_kbo(template_dir=template_dir,
