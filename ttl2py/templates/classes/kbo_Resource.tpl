@@ -22,7 +22,7 @@ class Resource(ABC):
         self._project_id = None
         self._name = "Resource"
         self._label = label
-        self.seqnum = seqnum
+        self._seqnum = seqnum
 
     def __getattribute__(self, item):
         """
@@ -43,7 +43,7 @@ class Resource(ABC):
         :return:
         """
 
-        if key in ['_namespace', '_project_id', '_name', '_label', 'seqnum']:
+        if key in ['_namespace', '_project_id', '_name', '_label', '_seqnum']:
             super().__setattr__(key, value)
         else:
             try:
@@ -76,9 +76,9 @@ class Resource(ABC):
                 except Exception as e:
                     print(e)
 
-            if self.seqnum == 0 or self.seqnum:
+            if self._seqnum == 0 or self._seqnum:
                 key = 'http://www.knora.org/ontology/knora-base#seqnum'
-                properties[key] = [{'int_value': self.seqnum}]
+                properties[key] = [{'int_value': self._seqnum}]
 
             return {'restype_id': restype_id,
                     'label': self._label,
