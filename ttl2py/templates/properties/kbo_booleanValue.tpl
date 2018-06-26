@@ -30,7 +30,7 @@ class BooleanValue(HasValue):
         """
         super().__init__(bool(boolean))
         self._name = "BooleanValue"
-        self._property_type: 'boolean_value'
+        self._property_type = 'boolean_value'
 
     def __setattr__(self, key, value):
         """
