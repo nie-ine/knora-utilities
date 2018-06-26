@@ -367,16 +367,15 @@ def property_dependencies(graph, uri):
 
     properties = set()
     try:
-        tmp_properties = set()
+        properties = set()
         for obj in graph.objects(subject=URIRef(uri),
                                  predicate=RDFS.subClassOf):
             # if isinstance(obj, BNode):
             try:
                 for o in graph.objects(subject=obj, predicate=OWL.onProperty):
-                    tmp_properties.add(str(o))
+                    properties.add(str(o))
             except Exception as e:
                 print(e)
-        properties = {item for item in tmp_properties if not item.endswith('Value') or item[:-5] not in tmp_properties}
 
         # TODO: the following is just a quick-fix! Make it more 'intelligent'! (SK_20180302)
         properties.discard('http://www.knora.org/ontology/knora-base#hasStillImageFileValue')
@@ -949,7 +948,7 @@ def main(argv):
             continue
         for (dir_path, dir_names, file_names) in os.walk(arg):
             for file_name in file_names:
-                if not file_name.startswith('.'):
+                if not file_name.startswith('.') and file_name.endswith('.ttl'):
                     data = {'dir_path': dir_path,
                             'file_name': file_name,
                             'ps': _DIRSEP}
