@@ -23,7 +23,9 @@ class IntValue(HasValue):  # Subclass int to get handy functions
     """
 
     def __init__(self, integer):
-        super().__init__(int(integer))
+        if integer is not None:
+            integer = int(integer)
+        super().__init__(integer)
         self._name = 'IntValue'
         self._property_type = 'int_value'
 
