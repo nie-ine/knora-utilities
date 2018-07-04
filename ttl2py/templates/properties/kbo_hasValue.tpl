@@ -61,7 +61,7 @@ class HasValue(object):
         :return:
         """
 
-        if self._value:
+        if self._value not in [None, '']:
             return [{self._property_type: self._value}]
 
     def json(self):
@@ -71,5 +71,5 @@ class HasValue(object):
         """
 
         value = self.__json_struct__()
-        if value:
+        if value not in [None, '']:
             return json.dumps(value)
