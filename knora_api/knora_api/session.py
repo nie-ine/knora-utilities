@@ -16,7 +16,7 @@ import traceback
 import requests
 
 from json import dumps
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 from requests.adapters import HTTPAdapter
 
 from .constants import SESSION
@@ -27,12 +27,12 @@ DEBUG = False
 
 class Session(object):
     """
-    Representation of a socket with a mysql server.
+    Representation of a socket with a knora server.
 
     The proper way to get an instance of this class is to call
     connect().
 
-    Establishs a 'connection' to the Knora-API.
+    Establishes a 'connection' to the Knora-API.
 
     :param host: Host where the Knora server is located
     :param user: Username to log in as
@@ -62,6 +62,7 @@ class Session(object):
 
         self.host = host or SESSION.DEFAULT_HOST   # Standard Knora Host
         self.port = port or SESSION.DEFAULT_PORT   # Standard Knora Port
+        self.knora_server = "http://{}:{}".format(self.host, self.port)
         self.user = user or SESSION.DEFAULT_USER
         self.password = password or SESSION.DEFAULT_PASSWORD
         self.charset = charset or SESSION.DEFAULT_CHARSET
@@ -163,9 +164,9 @@ class Session(object):
         :return: information about all accessible projects, stored in knora
         """
 
-        url = "http://{}:{}{}".format(self.host, self.port, KNORA_V1.V1_PROJECTS)
+        url = "{}{}".format(self.knora_server, KNORA_V1.V1_PROJECTS)
         response = self._get(url=url)
-        return response
+        return response.json() if response else None
 
     def get_v1_properties(self, resource_id):
         """
@@ -179,12 +180,11 @@ class Session(object):
         """
 
         try:
-            url = "http://{}:{}{}/{}".format(self.host,
-                                             self.port,
-                                             KNORA_V1.V1_PROPERTIES,
-                                             quote_plus(resource_id))
+            url = "{}{}/{}".format(self.knora_server,
+                                   KNORA_V1.V1_PROPERTIES,
+                                   quote_plus(resource_id))
             response = self._get(url=url)
-            return response
+            return response.json() if response else None
         except (TypeError, Exception) as e:
             print(e)
             if DEBUG:
@@ -204,10 +204,9 @@ class Session(object):
         """
 
         try:
-            url = "http://{}:{}{}/{}".format(self.host,
-                                             self.port,
-                                             KNORA_V1.V1_RESOURCES,
-                                             quote_plus(resource_id))
+            url = "{}{}/{}".format(self.knora_server,
+                                   KNORA_V1.V1_RESOURCES,
+                                   quote_plus(resource_id))
             response = self._get(url=url)
             return response
         except (TypeError, Exception) as e:
@@ -227,10 +226,9 @@ class Session(object):
         """
 
         try:
-            url = "http://{}:{}{}/{}".format(self.host,
-                                             self.port,
-                                             KNORA_V1.V1_RESOURCETYPES,
-                                             quote_plus(resource_class_iri))
+            url = "{}{}/{}".format(self.knora_server,
+                                   KNORA_V1.V1_RESOURCETYPES,
+                                   quote_plus(resource_class_iri))
             response = self._get(url=url)
             return response
         except (TypeError, Exception) as e:
@@ -247,7 +245,7 @@ class Session(object):
         :return: information about all accessible vocabularies, stored in knora
         """
 
-        url = "http://{}:{}{}".format(self.host, self.port, KNORA_V1.V1_VOCABULARIES)
+        url = "{}{}".format(self.knora_server, KNORA_V1.V1_VOCABULARIES)
         response = self._get(url=url)
         return response
 
@@ -269,7 +267,7 @@ class Session(object):
                 if value:
                     return value
 
-            url = "http://{}:{}{}".format(self.host, self.port, KNORA_V1.V1_RESOURCES)
+            url = "{}{}".format(self.knora_server, KNORA_V1.V1_RESOURCES)
 
             if file_name:
                 data = {'json': dumps(json).encode('utf-8')}
@@ -290,6 +288,34 @@ class Session(object):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
         return None
+
+    def get_v1_resource_xmlimportschemas(self, ontology_iri, **kwargs):
+        """
+
+        :param ontology_iri:
+        :param kwargs:
+        :return:
+        """
+
+        try:
+            url = "{}{}/xmlimportschemas/{}".format(self.knora_server,
+                                                    KNORA_V1.V1_RESOURCES,
+                                                    ontology_iri)
+            r = requests.get(url=url)
+            a = self._get(url=url, stream=True)
+            b = self._get(url=url)
+            with open('blub.zip', 'wb') as f:
+                for chunk in r.iter_content(chunk_size=1024):
+                    f.write(chunk)
+
+            return "blub"
+        except Exception as e:
+            print(e)
+            if DEBUG:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
+        return None
+
 
     # wrappers for existing functions to make the live more easy
 
@@ -350,7 +376,24 @@ class Session(object):
         :return:
         """
 
-        return self. post_v1_resource(json, file_name, **kwargs)
+        return self.post_v1_resource(json, file_name, **kwargs)
+
+
+    def get_xmlimportschemas(self, ontology_iri, **kwargs):
+        """
+
+        :param ontology_iri: the IRI of the choosen ontology (e.g. 'http://www.knora.org/ontology/0802/biblio)
+        :return: a zip archive containing information about the onology and other ontologies it depends on.
+        """
+
+        try:
+            encoded_ontology_iri = quote_plus(ontology_iri)
+        except TypeError:
+            "Error - Please enter a valid URL!"
+            return None
+
+        return self.get_v1_resource_xmlimportschemas(ontology_iri=encoded_ontology_iri, **kwargs)
+
 
     # some utility functions ...
 
