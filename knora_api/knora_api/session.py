@@ -5,7 +5,7 @@ __author__ = "Sascha KAUFMANN"
 __copyright__ = "Copyright 2018, NIE-INE"
 __credits__ = []
 __license__ = "3-Clause BSD License"
-__version__ = "0.0.2"
+__version__ = "0.0.1"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Beta"
@@ -16,7 +16,7 @@ import traceback
 import requests
 
 from json import dumps
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote_plus
 from requests.adapters import HTTPAdapter
 
 from .constants import SESSION
@@ -42,7 +42,6 @@ class Session(object):
     :param connect_timeout: Timeout before throwing an exception when connecting.
         (default: 10, min: 1, max: 31536000)
     """
-
 
     def __init__(self, host='localhost', port=3333, user=None, password=None,
                  charset='utf-8', connect_timeout=3.25, response_timeout=27,
@@ -79,7 +78,6 @@ class Session(object):
             except Exception as e:
                 print(e)
                 self._cache = None
-
 
         self.open()
 
@@ -249,21 +247,21 @@ class Session(object):
         response = self._get(url=url)
         return response
 
-    def post_v1_resource(self, json, file_name=None, cache_key=None):
+    def post_v1_resource(self, json, file_name=None, client_id=None):
         """
         store information in Knora
 
         :param json: data that should be stored in json
                  (list & dict) structure
         :param file_name: name of the image that might be part of the data
-        :param cache_key: use the cache_key to avoid unnecessary operations
+        :param client_id: use the client_id to avoid unnecessary operations
         :return: resource_id, if the information was successfully stored
                  None,        otherwise
         """
 
         try:
-            if self._cache and cache_key:
-                value = self._cache.get(cache_key)
+            if self._cache and client_id:
+                value = self._cache.get(client_id=client_id)
                 if value:
                     return value
 
@@ -280,7 +278,7 @@ class Session(object):
 
             resource_id = response.get('res_id') if response and response['status'] == 0 else None
             if self._cache and resource_id:
-                self._cache.set(key=cache_key, value=resource_id)
+                self._cache.set(key=client_id, value=resource_id)
             return resource_id
         except Exception as e:
             print(e)
@@ -301,7 +299,7 @@ class Session(object):
             url = "{}{}/xmlimportschemas/{}".format(self.knora_server,
                                                     KNORA_V1.V1_RESOURCES,
                                                     ontology_iri)
-            r = requests.get(url=url)
+            r = requests.get(url=url, )
             a = self._get(url=url, stream=True)
             b = self._get(url=url)
             with open('blub.zip', 'wb') as f:
@@ -315,7 +313,6 @@ class Session(object):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
         return None
-
 
     # wrappers for existing functions to make the live more easy
 
@@ -346,7 +343,7 @@ class Session(object):
         :return:
         """
 
-        return self.get_v1_resource(resource_class_iri=resource_class_iri)
+        return self.get_v1_resourcetypes(resource_class_iri=resource_class_iri)
 
     def get_properties(self, resource_id):
         """
@@ -378,7 +375,6 @@ class Session(object):
 
         return self.post_v1_resource(json, file_name, **kwargs)
 
-
     def get_xmlimportschemas(self, ontology_iri, **kwargs):
         """
 
@@ -394,10 +390,10 @@ class Session(object):
 
         return self.get_v1_resource_xmlimportschemas(ontology_iri=encoded_ontology_iri, **kwargs)
 
-
     # some utility functions ...
 
-    def get_mime_type(self, file_extension):
+    @staticmethod
+    def get_mime_type(file_extension):
         """
         tries to determine the correct mime-type from
         a given extension

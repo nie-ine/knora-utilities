@@ -64,7 +64,7 @@ class Cache(object):
         try:
             cur = self._connection.cursor()
             cur.execute("DROP TABLE IF EXISTS Cache;")
-            cur.execute("CREATE TABLE Cache(key text PRIMARY KEY , value text NOT NULL, checksum text NULL);")
+            cur.execute("CREATE TABLE Cache(client_id text PRIMARY KEY , value text NOT NULL, checksum text NULL);")
             cur.close()
             self._connection.commit()
             return True
@@ -73,66 +73,70 @@ class Cache(object):
             self._connection.rollback()
         return False
 
-    def get(self, key):
+    def get(self, client_id):
         """
         gets the key's value
 
-        :param key:
+        :param client_id:
         :return:
         """
         try:
             cur = self._connection.cursor()
-            cur.execute("SELECT value, checksum FROM Cache WHERE key=:key;", {'key': key})
-            record = cur.fetchone()
-            return record[0] if record else (None, None)
-        except Exception as e:
-            print(e)
-        return None
-
-    def get_value(self, key):
-        """
-        gets the key's value
-
-        :param key:
-        :return:
-        """
-        try:
-            cur = self._connection.cursor()
-            cur.execute("SELECT value FROM Cache WHERE key=:key;", {'key': key})
+            cur.execute("SELECT value, checksum FROM Cache WHERE client_id=:client_id;", {'client_id': client_id})
             record = cur.fetchone()
             return record[0] if record else None
         except Exception as e:
             print(e)
         return None
 
-    def set(self, key, value, checksum=None):
+    def get_value(self, client_id):
         """
-        set a key and its value
+        gets the client_id's value
 
-        :param key:
-        :param value:
+        :param client_id:
         :return:
         """
         try:
             cur = self._connection.cursor()
-            cur.execute("INSERT INTO Cache VALUES (:key, :value, :checksum);", {'key': key, 'value': value, 'checksum': checksum})
+            cur.execute("SELECT value FROM Cache WHERE client_id=:client_id;", {'client_id': client_id})
+            record = cur.fetchone()
+            return record[0] if record else None
+        except Exception as e:
+            print(e)
+        return None
+
+    def set(self, client_id, value, checksum=None):
+        """
+        set a client_id, its value and checksum
+
+        :param client_id:
+        :param value:
+        :param checksum: (optional)
+        :return:
+        """
+        try:
+            cur = self._connection.cursor()
+            cur.execute("INSERT INTO Cache VALUES (:client_id, :value, :checksum);", {'client_id': client_id,
+                                                                                      'value': value,
+                                                                                      'checksum': checksum})
             self._connection.commit()
             return True
         except Exception as e:
             print(e)
         return False
 
-    def setnx(self, key, value, checksum=None):
+    def setnx(self, client_id, value, checksum=None):
         """
-        sets a key and its value, only if the key does not exists
+        sets a client_id, its value and checksum, only if the client_id does not exists
         :param key:
         :param value:
+        :param checksum: (optional)
         :return:
         """
 
-        if self.get(key):
+        if self.get(client_id):
             return False
-        return self.set(key, value, checksum)
+        return self.set(client_id, value, checksum)
 
     @property
     def cache_dir(self):
