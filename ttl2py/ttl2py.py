@@ -502,6 +502,7 @@ def create_classes(template_file, graph, mappings, src_filename):
         argument_comment = ""
         namespace = ""
         class_properties = ""
+        class_properties_types = ""
 
         class_ns, class_fragment = ns_fragement(class_uri)
         class_dir = "{}{ps}classes".format(mappings[class_ns]['path'],
@@ -595,6 +596,7 @@ def create_classes(template_file, graph, mappings, src_filename):
         arg = []
         arg_comment = []
         cls_properties = []
+        cls_properties_types = []
         for key, value in prop_data.items():
             for item in value:
                 cur_path = generate_import("{}{ps}classes".format(mappings[class_ns]['rel_path'], ps=_DIRSEP),
@@ -607,19 +609,28 @@ def create_classes(template_file, graph, mappings, src_filename):
                     arg.append(key_prop)
                     arg_comment.append("{}:param {}:".format(" " * 8, key_prop))
                     modules_to_import.append("{} as {}".format(import_str, key_class))
-                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key_prop, key_class, key_prop))
+#                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key_prop, key_class, key_prop))
+                    cls_properties.append("{}self.{} = {}".format(" " * 8, key_prop, key_prop))
+                    cls_properties_types.append("{}self._{} = {}".format(" " * 8, key_prop, key_class))
                 else:
                     arg.append(key)
                     arg_comment.append("{}:param {}:".format(" " * 8, key))
                     tmp.append(key)
                     modules_to_import.append(import_str)
-                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key, to_class_name(key), key))
+#                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key, to_class_name(key), key))
+                    cls_properties.append("{}self.{} = {}".format(" " * 8, key, key))
+                    cls_properties_types.append("{}self._{} = {}".format(" " * 8, key, to_class_name(key)))
 
         if arg:
             arg_init = ["{}=None".format(item) for item in arg]
             argument = " {},".format(", ".join(arg_init))
             argument_comment = "\n{}".format("\n".join(arg_comment))
             class_properties = "\n{}\n".format("\n".join(cls_properties))
+            if len(class_properties_types) == 1:
+                comment = "        # data type"
+            else:
+                comment = "        # data types"
+            class_properties_types = "{}\n{}".format(comment, "\n".join(cls_properties_types))
 
         # read template and generate file
         module_import = "\n".join(modules_to_import)
@@ -633,7 +644,8 @@ def create_classes(template_file, graph, mappings, src_filename):
                                             argument=argument,
                                             argument_comment=argument_comment,
                                             namespace=class_ns,
-                                            class_properties=class_properties)
+                                            class_properties=class_properties,
+                                            class_properties_types=class_properties_types)
         filename = "{}{ps}{}.py".format(class_dir, class_name, ps=_DIRSEP)
         write_file(filename=filename, content=content)
 

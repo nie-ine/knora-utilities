@@ -26,9 +26,8 @@ class HasValue(object):
     def __init__(self, value):
         self._namespace = "http://www.knora.org/ontology/knora-base"
         self._name = "hasValue"
-        self._value = value
-
         self._property_type = 'value'
+        self._value = value
 
     def key(self):
         """

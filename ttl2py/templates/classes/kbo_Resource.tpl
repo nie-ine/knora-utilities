@@ -22,7 +22,7 @@ class Resource(ABC):
         self._project_id = None
         self._name = "Resource"
         self._label = label
-        self._seqnum = seqnum
+        self.seqnum = seqnum
 
     def __getattribute__(self, item):
         """
@@ -67,18 +67,23 @@ class Resource(ABC):
             restype_id = "{:s}#{:s}".format(self._namespace, self._name)
             properties = {}
             for attr, value in self.__dict__.items():
-                if value is None or attr.startswith('_'):
+                if attr.startswith('_') or attr == 'seqnum' or value in ['', None]:
                     continue
                 try:
-                    if value._value in ['', None]:
-                        continue
+                    prop_type = self.__dict__.get("_{}".format(attr))
+                    value = prop_type(value)
                     properties[value.key()] = value.__json_struct__()
-                except Exception as e:
+                except (TypeError, AttributeError) as e:
                     print(e)
 
-            if self._seqnum == 0 or self._seqnum:
-                key = 'http://www.knora.org/ontology/knora-base#seqnum'
-                properties[key] = [{'int_value': self._seqnum}]
+            try:
+                seqnum = int(self.seqnum)
+                if seqnum >= 0:
+                    key = 'http://www.knora.org/ontology/knora-base#seqnum'
+                    properties[key] = seqnum
+            except TypeError:
+                if self.seqnum:
+                    print("seqnum isn't neither a non-negative integer nor None!")
 
             return {'restype_id': restype_id,
                     'label': self._label,
