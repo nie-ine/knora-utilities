@@ -56,6 +56,28 @@ class Resource(ABC):
             except AttributeError as e:
                 return object.__setattr__(self, key, value)
 
+    def namespaces(self):
+        """
+
+        :return: a set of the used namespaces (resource and its properties)
+        """
+
+        result = set()
+        # We won't deal with kbo.Resource directly
+        if not type(self) is Resource and self._namespace:
+            result.add('http://www.knora.org/ontology/knora-base')
+            result.add(self._namespace)
+            for attr, value in self.__dict__.items():
+                if attr.startswith('_') or attr == 'seqnum':
+                    continue
+                try:
+                    prop_type = self.__dict__.get("_{}".format(attr))
+                    prop_dummy = prop_type(None)
+                    result.add(prop_dummy._namespace)
+                except (TypeError, AttributeError) as e:
+                    print(e)
+        return result
+
     def json(self):
         """
 
