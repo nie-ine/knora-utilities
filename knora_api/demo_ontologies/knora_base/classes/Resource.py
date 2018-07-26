@@ -76,7 +76,6 @@ class Resource(ABC):
                     'project_id': self._project_id,
                     'properties': properties}
 
-            return result_struct
         return None
 
     def __getitem__(self, item):

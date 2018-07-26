@@ -35,26 +35,26 @@ class Resource(ABC):
         except AttributeError as e:
             return object.__getattribute__(self, item)
 
-    def __setattr__(self, key, value):
-        """
-
-        :param key:
-        :param value:
-        :return:
-        """
-
-        if key in ['_namespace', '_project_id', '_name', '_label', '_seqnum']:
-            super().__setattr__(key, value)
-        else:
-            try:
-                if value is None or isinstance(value, HasValue):
-                    super().__setattr__(key, value)
-                elif object.__getattribute__(self, key):
-                    object.__getattribute__(self, key)._value = value
-                else:
-                    raise TypeError("Data type not allowed as a resource property")
-            except AttributeError as e:
-                return object.__setattr__(self, key, value)
+    # def __setattr__(self, key, value):
+    #     """
+    #
+    #     :param key:
+    #     :param value:
+    #     :return:
+    #     """
+    #
+    #     if key in ['_namespace', '_project_id', '_name', '_label', '_seqnum']:
+    #         super().__setattr__(key, value)
+    #     else:
+    #         try:
+    #             if value is None or isinstance(value, HasValue):
+    #                 super().__setattr__(key, value)
+    #             elif object.__getattribute__(self, key):
+    #                 object.__getattribute__(self, key)._value = value
+    #             else:
+    #                 raise TypeError("Data type not allowed as a resource property")
+    #         except AttributeError as e:
+    #             return object.__setattr__(self, key, value)
 
     def namespaces(self):
         """

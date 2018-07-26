@@ -24,5 +24,6 @@ $argument_comment
         self._namespace = ONTOLOGY_NS
         self._project_id = PROJECT_ID
         self._name = "$class_name"
+$class_internal_vars
 $class_properties_types
 $class_properties

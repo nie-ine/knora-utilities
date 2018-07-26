@@ -314,6 +314,42 @@ class Session(object):
                 traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2)
         return None
 
+    def post_v1_resources_xmlimport(self, project_iri, data=None, file_name=None, **kwargs):
+        """
+        imports the given data/file as a bulk-import
+
+        :param project_iri:
+        :param data:
+        :param file_name:
+        :param kwargs:
+        :return:
+        """
+
+        headers = {'content-type': "application/xml; charset=UTF-8",
+                   'cache-control': "no-cache"}
+
+        url = "{}{}/xmlimport/{}".format(self.knora_server,
+                                         KNORA_V1.V1_RESOURCES,
+                                         project_iri)
+
+        if file_name:
+            file_type = file_name.split('.')[-1]
+            mime_type = self.get_mime_type(file_type)
+            files = {'file': (file_name, open(file_name, 'rb'), mime_type)}
+            response = self._post(url=url, files=files, headers=headers)
+        else:
+            response = self._post(url=url, data=data)
+
+        # resource_id = response.get('res_id') if response and response['status'] == 0 else None
+        # if self._cache and resource_id:
+        #     self._cache.set(key=client_id, value=resource_id)
+
+        a = 0
+        #payload = codecs.open(OUTPUT_XML, 'r', encoding='utf8')
+        #response = requests.post(url, data=payload.read().encode("utf-8"), auth=(KNORA_USER, KNORA_PASSWORD),
+        #                         headers=headers)
+        return
+
     # wrappers for existing functions to make the live more easy
 
     def get_projects(self):
@@ -375,6 +411,25 @@ class Session(object):
 
         return self.post_v1_resource(json, file_name, **kwargs)
 
+    def post_xmlimport(self, project_iri, data=None, file_name=None, **kwargs):
+        """
+        just a wrapper for 'post_v1_resources_xmlimport()'
+
+        :param project_iri:
+        :param data:
+        :param file_name:
+        :param kwargs:
+        :return:
+        """
+
+        try:
+            encoded_project_iri = quote_plus(project_iri)
+        except TypeError:
+            "Error - Please enter a valid project IRI!"
+            return None
+
+        return self.post_v1_resources_xmlimport(encoded_project_iri, data, file_name, **kwargs)
+
     def get_xmlimportschemas(self, ontology_iri, **kwargs):
         """
 
@@ -412,6 +467,8 @@ class Session(object):
                 return 'image/png'
             elif extension in ['tif', 'tiff']:
                 return 'image/tiff'     # 'image/x-tiff'
+            elif extension == 'xml':
+                return 'application/xml'
         except AttributeError:
             pass
 

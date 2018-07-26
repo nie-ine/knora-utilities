@@ -4,30 +4,28 @@
 from .hasValue import HasValue
 
 """
-IntValue: definition of a datatype to handle Knora Base Ontology (KBO) integers
+test.py: a simple program to test the abilities of py-redis
 """
 
 __author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
 __copyright__ = "Copyright 2017, 2018; NIE-INE (nie-ine.ch)"
 __credits__ = [""]
 __license__ = "Apache License, Version 2 [https://www.apache.org/licenses/LICENSE-2.0.html]"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __maintainer__ = "NIE-INE (nie-ine.ch)"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
 
 
-class IntValue(HasValue):  # Subclass int to get handy functions
+class DecimalValue(HasValue):
     """
 
     """
 
-    def __init__(self, integer):
-        if integer is not None:
-            integer = int(integer)
-        super().__init__(integer)
-        self._name = 'IntValue'
-        self._property_type = 'int_value'
+    def __init__(self, decimal):
+        super().__init__(decimal)
+        self._name = 'DecimalValue'
+        self._property_type = 'decimal_value'
 
     def __setattr__(self, key, value):
         """
@@ -37,8 +35,9 @@ class IntValue(HasValue):  # Subclass int to get handy functions
         :return:
         """
 
-        if key == '_value' and value is not None and not isinstance(value, int):
-            raise TypeError("Wrong data type for IntValue")
+        if key == '_value' and value is not None:
+            if not isinstance(value, float) and not isinstance(value, int):
+                raise TypeError("Wrong data type for DecimalValue")
         super().__setattr__(key, value)
 
     def __json_struct__(self):
@@ -46,5 +45,5 @@ class IntValue(HasValue):  # Subclass int to get handy functions
 
         :return:
         """
-        if self._value or self.value == 0:
-            return [{self._property_type: self._value}]
+        if self._value or self._value not in ['', None]:
+            super().__json_struct__()
