@@ -32,15 +32,19 @@ _xmlns_prefix_tpl = "p{}-{}"
 _tag_tpl = "{{{:s}}}{:s}"
 
 
-def validate_xml(source_xml):
+def validate_xml(source_xml, schema_xsd):
     """
     validates the source_xml against the main xml schema SCHEMA_FILE received from knora.
 
     :param source_xml:
     :return:
     """
-    schema = get_schema()
-    to_validate = etree.parse(source_xml)
+    schema = get_schema(schema_xsd)
+    if isinstance(etree, source_xml):
+        to_validate = source_xml
+    else:
+        to_validate = etree.parse(source_xml)
+
     if schema.validate(to_validate):
         print("{} was successfully validated!".format(source_xml))
     else:
@@ -67,7 +71,7 @@ def _sanitize_id(text):
     return "_".join(text.split())
 
 
-def __xml_struct__(resource_set, standard_xmlns):
+def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
     """
 
     :param resource_set: a set that contains the resource to create
@@ -135,7 +139,15 @@ def __xml_struct__(resource_set, standard_xmlns):
         print(e)
 
     try:
+        if schema_xsd:
+            nsmap['xsi'] = "http://www.w3.org/2001/XMLSchema-instance"
+            attr_qname = etree.QName("http://www.w3.org/2001/XMLSchema-instance", "schemaLocation")
+            attrib = {attr_qname: schema_xsd}
+        else:
+            attrib = None
+
         root = etree.Element(_tag_tpl.format(_xmlns_knoraXmlImport, 'resources'),
+                             attrib=attrib,
                              nsmap=nsmap)
 
         for entry in resource_set:
@@ -151,14 +163,15 @@ def __xml_struct__(resource_set, standard_xmlns):
             label.text = resource._label
 
             try:
-                path = resource._file['path']
-                mimetype = resource._file['mimetype']
-                etree.SubElement(resource_root,
-                                 _tag_tpl.format(_xmlns_knoraXmlImport, 'file'),
-                                 path=path,
-                                 mimetype=mimetype)
-                label.text = resource._label
-            except (AttributeError, TypeError, KeyError):
+                if resource._file:
+                    path = resource._file['path']
+                    mimetype = resource._file['mimetype']
+                    etree.SubElement(resource_root,
+                                     _tag_tpl.format(_xmlns_knoraXmlImport, 'file'),
+                                     path=path,
+                                     mimetype=mimetype)
+                    label.text = resource._label
+            except AttributeError:
                 pass
             properties_info = resource_info[resource_key]
 
@@ -183,7 +196,7 @@ def __xml_struct__(resource_set, standard_xmlns):
                     else:
                         tag_name = '__'.join(key.split(':'))
                     tag = _tag_tpl.format(resource_xmlns, tag_name)
-                    print('i')
+
                     for value in prop_values:
                         if isinstance(value, bool):
                             value = 1 if value is True else 0
@@ -192,7 +205,6 @@ def __xml_struct__(resource_set, standard_xmlns):
                         if value is None:
                             print('DEBUG - value is None ({})')
                         if prop_info['knoraType'] == 'link_value':
-                            print('j')
                             link = etree.SubElement(resource_root, tag)
                             linkType = value.linkType
                             target = value.target
@@ -224,18 +236,20 @@ def __xml_struct__(resource_set, standard_xmlns):
         print(e)
     return
 
-def xml_struct(resource_set, standard_xmlns, encoding=None):
+def xml_struct(resource_set, standard_xmlns, schema_xsd=None, encoding=None):
     """
 
     :param resource_set:
     :param standard_xmlns:
+    :param schema_xsd:
+    :param encoding:
     :return:
     """
 
     if not encoding:
         encoding = 'UTF-8'
 
-    xml_struct = __xml_struct__(resource_set, standard_xmlns)
+    xml_struct = __xml_struct__(resource_set, standard_xmlns, schema_xsd)
 
     try:
         result = etree.tostring(xml_struct, pretty_print=True, xml_declaration=True, encoding=encoding)
