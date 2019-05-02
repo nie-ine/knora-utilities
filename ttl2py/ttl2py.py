@@ -21,7 +21,7 @@ __author__ = "Sascha KAUFMANN"
 __copyright__ = "Copyright 2018, NIE-INE"
 __credits__ = []
 __license__ = "3-Clause BSD License"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Production"
@@ -42,7 +42,7 @@ def is_shortcode(code):
     :param code:
     :return:
     """
-    p = re.compile('[0-9A-F]{4}')
+    p = re.compile('[0-9A-F]{4}|shared')
     try:
         if p.match(code):
             return True

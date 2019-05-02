@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 
 try:
     from lxml import etree
@@ -30,6 +30,7 @@ _XMLNS_tpl = "http://api.knora.org/ontology/{}/{}/xml-import/v1#"
 _xmlns_knoraXmlImport = "http://api.knora.org/ontology/knoraXmlImport/v1#"
 _xmlns_prefix_tpl = "p{}-{}"
 _tag_tpl = "{{{:s}}}{:s}"
+_knora_base_ns = "http://www.knora.org/ontology/knora-base"
 
 
 def validate_xml(source_xml, schema_xsd):
@@ -87,16 +88,20 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
     try:
         for entry in resource_set:
             resource = entry[0]
-            resource_ns = resource._namespace
-            if resource_ns not in namespaces:
+            resource_ns = "" if resource._namespace == _knora_base_ns else resource._namespace
+            if resource_ns and resource_ns not in namespaces:
                 onto_code = resource_ns.split('/')[-2]
                 onto_name = resource_ns.split('/')[-1]
-                xmlns_prefix = _xmlns_prefix_tpl.format(onto_code, onto_name)
+                prefix_name = '0000' if onto_code == 'shared' else onto_code
+                xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
                 xmlns = _XMLNS_tpl.format(onto_code, onto_name)
                 namespaces[resource_ns] = (xmlns_prefix, xmlns)
                 nsmap[xmlns_prefix] = xmlns
 
-            resource_key = "{}:{}".format(namespaces[resource_ns][0], resource._name)
+            if resource_ns:
+                resource_key = "{}:{}".format(namespaces[resource_ns][0], resource._name)
+            else:
+                resource_key = resource._name
             if resource_key not in resource_info:
                 properties = {}
                 for attr, value in resource.__dict__.items():
@@ -106,35 +111,58 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                         prop_type = resource.__dict__.get("_{}".format(attr))
                         prop_dummy = prop_type(None)
                         property_ns = prop_dummy._namespace
-                        onto_code = property_ns.split('/')[-2]
-                        onto_name = property_ns.split('/')[-1]
-                        xmlns_prefix = _xmlns_prefix_tpl.format(onto_code, onto_name)
-                        xmlns = _XMLNS_tpl.format(onto_code, onto_name)
-                        namespaces[property_ns] = (xmlns_prefix, xmlns)
-                        nsmap[xmlns_prefix] = xmlns
-                        property_key = "{}:{}".format(xmlns_prefix, prop_dummy._name)
+                        if property_ns != _knora_base_ns:
+                            onto_code = property_ns.split('/')[-2]
+                            onto_name = property_ns.split('/')[-1]
+                            prefix_name = '0000' if onto_code == 'shared' else onto_code
+                            xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
+                            xmlns = _XMLNS_tpl.format(onto_code, onto_name)
+                            namespaces[property_ns] = (xmlns_prefix, xmlns)
+                            nsmap[xmlns_prefix] = xmlns
+                            if xmlns_prefix.startswith('p0000-'):
+                                property_key = "{}:{}__{}".format(resource_key.split(':')[0], xmlns_prefix, prop_dummy._name)
+                                sort_idx = (resource_key.split(':')[0], xmlns_prefix, prop_dummy._name)
+                            else:
+                                property_key = "{}:{}".format(xmlns_prefix, prop_dummy._name)
+                                sort_idx = (xmlns_prefix, '', prop_dummy._name)
+                        else:
+                            xmlns_prefix = "knoraXmlImport"
+                            xmlns = nsmap[xmlns_prefix]
+                            property_key = "{}:{}__{}".format(namespaces[resource_ns][0], xmlns_prefix, attr)
+                            sort_idx = (namespaces[resource_ns][0], xmlns_prefix, attr)
+
                         properties[property_key] = {'xmlns': xmlns,
                                                     'name': prop_dummy._name,
-                                                    'knoraType': prop_dummy._property_type}
+                                                    'knoraType': prop_dummy._property_type,
+                                                    'sort_idx': sort_idx}
+
                         if prop_dummy._property_type == 'link_value':
                             target = prop_dummy._objectClassConstraint
                             target_ns, target_name = target.split('#')
-                            onto_code = target_ns.split('/')[-2]
-                            onto_name = target_ns.split('/')[-1]
-                            xmlns_prefix = _xmlns_prefix_tpl.format(onto_code, onto_name)
-                            xmlns = _XMLNS_tpl.format(onto_code, onto_name)
-                            namespaces[target_ns] = (xmlns_prefix, xmlns)
-                            nsmap[xmlns_prefix] = xmlns
+                            if target_ns == _knora_base_ns:
+                                 xmlns = "http://api.knora.org/ontology/knoraXmlImport/v1#"
+                            else:
+                                onto_code = target_ns.split('/')[-2]
+                                onto_name = target_ns.split('/')[-1]
+                                prefix_name = '0000' if onto_code == 'shared' else onto_code
+                                xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
+                                xmlns = _XMLNS_tpl.format(onto_code, onto_name)
+                                namespaces[target_ns] = (xmlns_prefix, xmlns)
+                                nsmap[xmlns_prefix] = xmlns
                             properties[property_key]['objectClassConstraint'] = (xmlns, target_name)
                     except (TypeError, AttributeError) as e:
+                        print("1")
                         print(e)
+                        print(resource_key)
 
-                property_key = "{}:{}".format(namespaces[resource_ns][0], 'seqnum')
-                properties[property_key] = {'xmlns': namespaces[resource_ns][1],
-                                            'name': 'seqnum',
-                                            'knoraType': 'int_value'}
+                if resource_ns:
+                    property_key = "{}:{}".format(namespaces[resource_ns][0], 'seqnum')
+                    properties[property_key] = {'xmlns': namespaces[resource_ns][1],
+                                                'name': 'seqnum',
+                                                'knoraType': 'int_value',
+                                                'sort_idx': (namespaces[resource_ns][0], '_', 'seqnum')}
 
-                resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[0]))
+                resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[1]['sort_idx']))
     except Exception as e:
         print(e)
 
@@ -153,12 +181,18 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
         for entry in resource_set:
             resource = entry[0]
             client_id = _sanitize_id(entry[1])
-            resource_ns = resource._namespace
-            resource_key = "{}:{}".format(namespaces[resource_ns][0], resource._name)
-            resource_xmlns = namespaces[resource_ns][1]
-            resource_root = etree.SubElement(root,
-                                             _tag_tpl.format(resource_xmlns, resource._name),
-                                             id=client_id)
+            resource_ns = "" if resource._namespace == _knora_base_ns else resource._namespace
+
+            if resource_ns:
+                resource_key = "{}:{}".format(namespaces[resource_ns][0], resource._name)
+                resource_xmlns = namespaces[resource_ns][1]
+                tag = _tag_tpl.format(resource_xmlns, resource._name)
+            else:
+                resource_key = resource._name
+                resource_xmlns = "http://api.knora.org/ontology/knoraXmlImport/v1#"
+                tag = resource._name
+
+            resource_root = etree.SubElement(root, tag, id=client_id)
             label = etree.SubElement(resource_root, _tag_tpl.format(_xmlns_knoraXmlImport, 'label'))
             label.text = resource._label
 
@@ -171,66 +205,72 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                      path=path,
                                      mimetype=mimetype)
                     label.text = resource._label
-            except AttributeError:
+            except AttributeError as e:
                 pass
+
             properties_info = resource_info[resource_key]
+            # for key, prop_info in properties_info.items():
+            #     if prop_info['name'] == 'seqnum':
+            #         value = resource.__dict__.get(prop_info['name'])
+            #         if value is not None:
+            #             cur_entry = etree.SubElement(resource_root,
+            #                                          'knoraXmlImport__seqnum',
+            #                                          knoraType=prop_info['knoraType'])
+            #             cur_entry.text = str(value)
+            #         break
 
-            seqnum = None
             for key, prop_info in properties_info.items():
-                property_value = resource.__dict__.get(prop_info['name'])
-                if prop_info['name'] == 'seqnum':
-                    if property_value is not None:
-                        seqnum = (prop_info, property_value)
-                    continue
-                if property_value not in ['', {}, None]:
-                    if isinstance(property_value, str) or isinstance(property_value, tuple):
-                        prop_values = {property_value}
-                    else:
-                        try:
-                            prop_values = set(property_value)
-                        except TypeError:
-                            prop_values = {property_value}
-
-                    if prop_info['xmlns'] == resource_xmlns:
-                        tag_name = prop_info['name']
-                    else:
-                        tag_name = '__'.join(key.split(':'))
-                    tag = _tag_tpl.format(resource_xmlns, tag_name)
-
-                    for value in prop_values:
-                        if isinstance(value, bool):
-                            value = 1 if value is True else 0
-                        if isinstance(value, int):
-                            print('DEBUG - value is int ({})'.format(value))
-                        if value is None:
-                            print('DEBUG - value is None ({})')
-                        if prop_info['knoraType'] == 'link_value':
-                            link = etree.SubElement(resource_root, tag)
-                            linkType = value.linkType
-                            target = value.target
-                            a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
-                                                prop_info['objectClassConstraint'][1])
-                            etree.SubElement(link,
-                                             a,
-                                             knoraType=prop_info['knoraType'],
-                                             linkType=linkType,
-                                             target=target)
-                        else:
+                try:
+                    property_value = resource.__dict__.get(prop_info['name'])
+                    if prop_info['name'] == 'seqnum':
+                        value = resource.__dict__.get(prop_info['name'])
+                        if value is not None:
                             cur_entry = etree.SubElement(resource_root,
-                                                         tag,
+                                                         'knoraXmlImport__seqnum',
                                                          knoraType=prop_info['knoraType'])
                             cur_entry.text = str(value)
-            if seqnum is not None:
-                prop_info, value = seqnum
-                tag = _tag_tpl.format(prop_info['xmlns'], 'knoraXmlImport__seqnum')
-                cur_entry = etree.SubElement(resource_root,
-                                             _tag_tpl.format(prop_info['xmlns'], 'knoraXmlImport__seqnum'),
-                                             knoraType=prop_info['knoraType'])
-                cur_entry.text = str(value)
+                        continue
+                    if property_value not in ['', {}, None]:
+                        if isinstance(property_value, str) or isinstance(property_value, tuple):
+                            prop_values = {property_value}
+                        else:
+                            try:
+                                prop_values = set(property_value)
+                            except TypeError:
+                                prop_values = {property_value}
 
+                        if prop_info['xmlns'] == resource_xmlns:
+                            tag_name = prop_info['name']
+                        else:
+                            tag_name = key.split(':')[1] # ''__'.join(key.split(':'))
+                        tag = _tag_tpl.format(resource_xmlns, tag_name)
+
+                        for value in prop_values:
+                            if isinstance(value, bool):
+                                value = 1 if value is True else 0
+                            if isinstance(value, int):
+                                print('DEBUG - value is int ({})'.format(value))
+                            if value is None:
+                                print('DEBUG - value is None ({})')
+                            if prop_info['knoraType'] == 'link_value':
+                                link = etree.SubElement(resource_root, tag)
+                                linkType = value.linkType
+                                target = value.target
+                                a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
+                                                    prop_info['objectClassConstraint'][1])
+                                etree.SubElement(link,
+                                                 a,
+                                                 knoraType=prop_info['knoraType'],
+                                                 linkType=linkType,
+                                                 target=target)
+                            else:
+                                cur_entry = etree.SubElement(resource_root,
+                                                             tag,
+                                                             knoraType=prop_info['knoraType'])
+                                cur_entry.text = str(value)
+                except Exception as e:
+                    print(e)
         return root
-
-        #    tag = _tag_tpl.format(namespaces[resource_ns][1], resource._name)
 
     except Exception as e:
         print(e)
