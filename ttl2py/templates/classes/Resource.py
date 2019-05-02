@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
-from ..properties.hasValue import HasValue
+from ..properties.hasLinkTo import LinkValue
 
 """
 definition of abstract class knora-base:Resource
@@ -101,7 +101,69 @@ class Resource(ABC):
         return item._value
 
     def __repr__(self):
+        """
+
+        :return:
+        """
+
         return "{}".format(self.json())
 
     def __str__(self):
+        """
+
+        :return:
+        """
+
         return "{}".format(self.json())
+
+    def checksum(self):
+        """
+        Calculates a checksum based on the attribute names and their current values
+
+        :return: integer, that represents the checksum
+        """
+
+        def _calc_checksum(item):
+            """
+            caluculates the checksum of a given item (i.e. value)
+
+            :param item: the value we want to calculate the checksum for
+            :return: int; checksum of item => 0 := neutral element
+            """
+
+            if isinstance(item, LinkValue):
+                if 'iri' == item.linkType.lower() and item.target:
+                    # we want to deal with 'real' links, only (i.e. from type 'iri' and not empty)
+                    return hash(item.target)
+            else:
+                return hash(item)
+
+            return 0
+
+        if not type(self) is Resource and self._namespace:
+            checksum_value = 0
+            for attr, value in self.__dict__.items():
+                if attr.startswith('_'):
+                    if attr in ['_namespace', '_project_id', '_name']:
+                        checksum_value ^= hash(value)
+                    continue
+
+                try:
+                    checksum_value ^= (hash(attr) ^ _calc_checksum(value))
+                except TypeError as e:
+                    # this parts handles a collection of values
+                    # (i.e. a set or a list; dict has to be implemented)
+                    # calculate a property's checksum composed by a checksum of each item
+                    collection_checksum = 0
+                    try:
+                        for item in value:
+                            try:
+                                collection_checksum ^= _calc_checksum(item)
+                            except TypeError:
+                                continue
+                    except Exception:
+                        pass
+
+                    checksum_value ^= (hash(attr) ^ hash(collection_checksum))
+
+        return checksum_value
