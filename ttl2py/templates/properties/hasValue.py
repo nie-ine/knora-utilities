@@ -36,24 +36,6 @@ class HasValue(object):
         """
         return """{:s}#{:s}""".format(self._namespace, self._name)
 
-#     def __repr__(self):
-#         """
-#
-#         :return:
-#         """
-#
-#         return self._value
-# #        return json.dumps({self._value_type: self._value})
-#
-#     def __str__(self):
-#         """
-#
-#         :return:
-#         """
-#
-#         return self._value
-# #        return json.dumps({self._value_type: self._value})
-
     def __json_struct__(self):
         """
 

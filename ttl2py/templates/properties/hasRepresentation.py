@@ -1,7 +1,6 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-from collections import namedtuple
 from .hasLinkTo import HasLinkTo
 
 """
@@ -17,8 +16,6 @@ __maintainer__ = "NIE-INE (nie-ine.ch)"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
 
-LinkValue = namedtuple('LinkValue', 'linkType target')
-
 
 class HasRepresentation(HasLinkTo):  # Subclass link to get handy functions
     """
@@ -32,35 +29,9 @@ class HasRepresentation(HasLinkTo):  # Subclass link to get handy functions
         """
         super(HasRepresentation, self).__init__(link)
         self._name = 'hasRepresentation'
-#        self._property_type = 'link_value'
         self._objectClassConstraint = "http://www.knora.org/ontology/knora-base#Representation"
 
-    # def __setattr__(self, key, value):
-    #     """
-    #
-    #     :param key:
-    #     :param value:
-    #     :return:
-    #     """
-    #
-    #     if (key == '_value' and value is not None and
-    #             not (isinstance(value, LinkValue) or isinstance(value, str))):
-    #         raise TypeError("Wrong data type for LinkValue")
-    #     super().__setattr__(key, value)
-
-    # def __repr__(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if self._value:
-    #         try:
-    #             value = self._value.target
-    #         except AttributeError:
-    #             value = self._value
-    #         return """['link_value': '{:s}']""".format(value)
-    #
-    # def __str__(self):
+    # def __json_struct__(self):
     #     """
     #
     #     :return:
@@ -71,31 +42,4 @@ class HasRepresentation(HasLinkTo):  # Subclass link to get handy functions
     #         except AttributeError:
     #             value: str = self._value
     #         if value:
-    #             return """['link_value': '{:s}']""".format(value)
-    #     return
-
-    def __json_struct__(self):
-        """
-
-        :return:
-        """
-        if self._value:
-            try:
-                value: str = self._value.target
-            except AttributeError:
-                value: str = self._value
-            if value:
-                return [{self._property_type: self.value}]
-
-    # def json(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if self._value:
-    #         try:
-    #             value: str = self._value.target
-    #         except AttributeError:
-    #             value: str = self._value
-    #         if value:
-    #             return """['{:s}': '{:s}']""".format(self._property_type, value)
+    #             return [{self._property_type: self.value}]

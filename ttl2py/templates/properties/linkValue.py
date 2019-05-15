@@ -42,3 +42,30 @@ class LinkValue(HasValue):
         if key == '_value' and value is not None and not isinstance(value, str):
             raise TypeError("Wrong data type for LinkValue")
         super().__setattr__(key, value)
+
+    def __json_struct__(self):
+        """
+
+        :return:
+        """
+        if self._value:
+            if isinstance(self._value, list) or isinstance(self._value, set):
+                attrib_representation = []
+                for item in self._value:
+                    try:
+                        value: str = item._value.target
+                    except AttributeError:
+                        value: str = item._value
+                    if value:
+                        attrib_representation.append({self._property_type: value})
+                if attrib_representation:
+                    return attrib_representation
+            else:
+                try:
+                    value: str = self._value.target
+                except AttributeError:
+                    value: str = self._value
+                if value:
+                    return [{self._property_type: value}]
+        return None
+

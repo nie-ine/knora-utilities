@@ -40,7 +40,9 @@ class TextValue(HasValue):  # Subclass string to get handy functions
         :return:
         """
 
-        if key == '_value' and value is not None and not isinstance(value, str):
+        if (key == '_value' and value is not None
+                and not isinstance(value, str)
+                and not (isinstance(value, list) or isinstance(value, set))):
             raise TypeError("Wrong data type for textValue")
         super().__setattr__(key, value)
 

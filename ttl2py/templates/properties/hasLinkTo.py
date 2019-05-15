@@ -80,12 +80,24 @@ class HasLinkTo(HasValue):  # Subclass link to get handy functions
         :return:
         """
         if self._value:
-            try:
-                value: str = self._value.target
-            except AttributeError:
-                value: str = self._value
-            if value:
-                return [{self._property_type: self.value}]
+            if isinstance(self._value, list) or isinstance(self._value, set):
+                attrib_representation = []
+                for item in self._value:
+                    try:
+                        attrib_representation.append({self._property_type: item.target})
+                    except AttributeError:
+                        pass
+
+                if attrib_representation:
+                    return attrib_representation
+            else:
+                try:
+                    value: str = self._value.target
+                except AttributeError:
+                    value: str = self._value
+                if value:
+                    return [{self._property_type: value}]
+        return None
 
     # def json(self):
     #     """

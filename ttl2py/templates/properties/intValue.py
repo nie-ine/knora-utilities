@@ -37,7 +37,9 @@ class IntValue(HasValue):  # Subclass int to get handy functions
         :return:
         """
 
-        if key == '_value' and value is not None and not isinstance(value, int):
+        if (key == '_value' and value is not None
+                and not isinstance(value, int)
+                and not (isinstance(value, list) or isinstance(value, set))):
             raise TypeError("Wrong data type for IntValue")
         super().__setattr__(key, value)
 
