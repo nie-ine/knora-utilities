@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
+import traceback
 from collections import OrderedDict
 
 try:
@@ -23,8 +24,6 @@ except ImportError:
                     import elementtree.ElementTree as etree
                 except ImportError:
                     print("Failed to import ElementTree from any known place")
-
-from ..knora_base.properties.hasLinkTo import LinkValue
 
 _XMLNS_tpl = "http://api.knora.org/ontology/{}/{}/xml-import/v1#"
 _xmlns_knoraXmlImport = "http://api.knora.org/ontology/knoraXmlImport/v1#"
@@ -120,7 +119,9 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                             namespaces[property_ns] = (xmlns_prefix, xmlns)
                             nsmap[xmlns_prefix] = xmlns
                             if xmlns_prefix.startswith('p0000-'):
-                                property_key = "{}:{}__{}".format(resource_key.split(':')[0], xmlns_prefix, prop_dummy._name)
+                                property_key = "{}:{}__{}".format(resource_key.split(':')[0],
+                                                                  xmlns_prefix,
+                                                                  prop_dummy._name)
                                 sort_idx = (resource_key.split(':')[0], xmlns_prefix, prop_dummy._name)
                             else:
                                 property_key = "{}:{}".format(xmlns_prefix, prop_dummy._name)
@@ -140,7 +141,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                             target = prop_dummy._objectClassConstraint
                             target_ns, target_name = target.split('#')
                             if target_ns == _knora_base_ns:
-                                 xmlns = "http://api.knora.org/ontology/knoraXmlImport/v1#"
+                                 xmlns = _xmlns_knoraXmlImport
                             else:
                                 onto_code = target_ns.split('/')[-2]
                                 onto_name = target_ns.split('/')[-1]
@@ -164,12 +165,13 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
 
                 resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[1]['sort_idx']))
     except Exception as e:
+        print("2")
         print(e)
 
     try:
         if schema_xsd:
             nsmap['xsi'] = "http://www.w3.org/2001/XMLSchema-instance"
-            attr_qname = etree.QName("http://www.w3.org/2001/XMLSchema-instance", "schemaLocation")
+            attr_qname = etree.QName(nsmap['xsi'], "schemaLocation")
             attrib = {attr_qname: schema_xsd}
         else:
             attrib = None
@@ -189,7 +191,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                 tag = _tag_tpl.format(resource_xmlns, resource._name)
             else:
                 resource_key = resource._name
-                resource_xmlns = "http://api.knora.org/ontology/knoraXmlImport/v1#"
+                resource_xmlns = _xmlns_knoraXmlImport
                 tag = resource._name
 
             resource_root = etree.SubElement(root, tag, id=client_id)
@@ -209,15 +211,6 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                 pass
 
             properties_info = resource_info[resource_key]
-            # for key, prop_info in properties_info.items():
-            #     if prop_info['name'] == 'seqnum':
-            #         value = resource.__dict__.get(prop_info['name'])
-            #         if value is not None:
-            #             cur_entry = etree.SubElement(resource_root,
-            #                                          'knoraXmlImport__seqnum',
-            #                                          knoraType=prop_info['knoraType'])
-            #             cur_entry.text = str(value)
-            #         break
 
             for key, prop_info in properties_info.items():
                 try:
@@ -230,6 +223,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                                          knoraType=prop_info['knoraType'])
                             cur_entry.text = str(value)
                         continue
+
                     if property_value not in ['', {}, None]:
                         if isinstance(property_value, str) or isinstance(property_value, tuple):
                             prop_values = {property_value}
@@ -238,20 +232,15 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                 prop_values = set(property_value)
                             except TypeError:
                                 prop_values = {property_value}
-
                         if prop_info['xmlns'] == resource_xmlns:
                             tag_name = prop_info['name']
                         else:
-                            tag_name = key.split(':')[1] # ''__'.join(key.split(':'))
+                            tag_name = key.split(':')[1]
                         tag = _tag_tpl.format(resource_xmlns, tag_name)
 
                         for value in prop_values:
                             if isinstance(value, bool):
                                 value = 1 if value is True else 0
-                            if isinstance(value, int):
-                                print('DEBUG - value is int ({})'.format(value))
-                            if value is None:
-                                print('DEBUG - value is None ({})')
                             if prop_info['knoraType'] == 'link_value':
                                 link = etree.SubElement(resource_root, tag)
                                 linkType = value.linkType
@@ -269,6 +258,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                                              knoraType=prop_info['knoraType'])
                                 cur_entry.text = str(value)
                 except Exception as e:
+                    print(traceback.format_exc())
                     print(e)
         return root
 
