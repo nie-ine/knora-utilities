@@ -37,13 +37,13 @@ class Session(object):
     :param host: Host where the Knora server is located
     :param user: Username to log in as
     :param password: Password to use.
-    :param port: Knora port to use, default is usually OK. (default: 3306)
+    :param port: Knora port to use, default is usually OK. (default: 3333)
     :param charset: Charset you want to use.
     :param connect_timeout: Timeout before throwing an exception when connecting.
         (default: 10, min: 1, max: 31536000)
     """
 
-    def __init__(self, host='localhost', port=3333, user=None, password=None,
+    def __init__(self, host=None, port=None, user=None, password=None,
                  charset='utf-8', connect_timeout=3.25, response_timeout=27,
                  max_retries=3, cache=None):
         """
@@ -60,16 +60,23 @@ class Session(object):
         """
 
         self.host = host or SESSION.DEFAULT_HOST   # Standard Knora Host
-        self.port = port or SESSION.DEFAULT_PORT   # Standard Knora Port
-        self.knora_server = "http://{}:{}".format(self.host, self.port)
-        self.user = user or SESSION.DEFAULT_USER
-        self.password = password or SESSION.DEFAULT_PASSWORD
+        self.port = port
+        self.user = 'root@example.com' #user or SESSION.DEFAULT_USER
+        self.password = 'test' #password or SESSION.DEFAULT_PASSWORD
         self.charset = charset or SESSION.DEFAULT_CHARSET
         self.connect_timeout = connect_timeout or SESSION.DEFAULT_TIMEOUT_CONNECT
-        self.response_timeout = response_timeout or SESSION.DEFAULT_TIMEOUT_RESPONSE
+        self.response_timeout = None    #response_timeout or SESSION.DEFAULT_TIMEOUT_RESPONSE
         self.max_retries = max_retries or SESSION.DEFAULT_RETRIES
         self._cache = None
         self._session = None
+
+        if self.host == SESSION.DEFAULT_HOST and not self.port:
+            self.port = SESSION.DEFAULT_PORT
+
+        if self.port:
+            self.knora_server = "http://{}:{}".format(self.host, self.port)
+        else:
+            self.knora_server = "http://{}".format(self.host)
 
         if cache:
             try:
@@ -139,10 +146,12 @@ class Session(object):
         try:
             r = self._session.post(url=url, data=data, json=json, **kwargs)
             if r.status_code != 200:
-                print("Post failed {} / {} / {} / {}".format(r.content.decode('utf-8'),
-                                                             data or '--',
-                                                             json or '--',
-                                                             kwargs.get('files', '--')))
+                print(r)
+                print("Post failed: {}".format(r.content.decode('utf-8')))
+                # print("Post failed {} / {} / {} / {}".format(r.content.decode('utf-8'),
+                #                                              data or '--',
+                #                                              json or '--',
+                #                                              kwargs.get('files', '--')))
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -300,8 +309,6 @@ class Session(object):
                                                     KNORA_V1.V1_RESOURCES,
                                                     ontology_iri)
             r = requests.get(url=url, )
-            a = self._get(url=url, stream=True)
-            b = self._get(url=url)
             with open('blub.zip', 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     f.write(chunk)
@@ -340,15 +347,20 @@ class Session(object):
         else:
             response = self._post(url=url, data=data)
 
-        # resource_id = response.get('res_id') if response and response['status'] == 0 else None
-        # if self._cache and resource_id:
-        #     self._cache.set(key=client_id, value=resource_id)
+        # write result into the 'cache' if possible
+        if self._cache and response:
+            try:
+                resources = response['createdResources']
+                for resource in resources:
+                    try:
+                        self._cache.set(client_id=resource['clientResourceID'],
+                                        value=resource['resourceIri'])
+                    except KeyError as ke:
+                        print(ke)
+            except KeyError as ke:
+                print(ke)
 
-        a = 0
-        #payload = codecs.open(OUTPUT_XML, 'r', encoding='utf8')
-        #response = requests.post(url, data=payload.read().encode("utf-8"), auth=(KNORA_USER, KNORA_PASSWORD),
-        #                         headers=headers)
-        return
+        return response
 
     # wrappers for existing functions to make the live more easy
 
@@ -473,3 +485,32 @@ class Session(object):
             pass
 
         return None
+
+    def get_cached_record(self, client_id):
+        """
+
+        :param client_id:
+        :return:
+        """
+
+        return self._cache.get(client_id=client_id)
+
+    def set_cached_record(self, client_id, iri, checksum=None):
+        """
+        
+        :param client_id: 
+        :param iri: 
+        :param checksum: 
+        :return: 
+        """""
+
+        return self._cache.set(client_id=client_id, value=iri, checksum=checksum)
+
+    def get_cached_iri(self, client_id):
+        """
+
+        :param client_id:
+        :return:
+        """
+
+        return self._cache.get_iri(client_id=client_id)

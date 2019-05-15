@@ -39,7 +39,8 @@ class Cache(object):
             self.create_cache_dir()
             self._connection = sqlite3.connect('{}{}{}.sqlite'.format(self.cache_dir, os.sep, name), uri=True)
             cur = self._connection.cursor()
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Cache';")
+            sql_stmt = "SELECT name FROM sqlite_master WHERE type='table' AND name='Cache';"
+            cur.execute(sql_stmt)
             if cur.fetchone() is None:
                 self.initialize()
             return True
@@ -64,7 +65,8 @@ class Cache(object):
         try:
             cur = self._connection.cursor()
             cur.execute("DROP TABLE IF EXISTS Cache;")
-            cur.execute("CREATE TABLE Cache(client_id text PRIMARY KEY , value text NOT NULL, checksum text NULL);")
+            sql_stmt = "CREATE TABLE Cache(client_id text PRIMARY KEY , value text NOT NULL, checksum text NULL);"
+            cur.execute(sql_stmt)
             cur.close()
             self._connection.commit()
             return True
@@ -82,14 +84,15 @@ class Cache(object):
         """
         try:
             cur = self._connection.cursor()
-            cur.execute("SELECT value, checksum FROM Cache WHERE client_id=:client_id;", {'client_id': client_id})
+            sql_stmt = "SELECT client_id, value, checksum FROM Cache WHERE client_id=:client_id;"
+            cur.execute(sql_stmt, {'client_id': client_id})
             record = cur.fetchone()
-            return record[0] if record else None
+            return record if record else None
         except Exception as e:
             print(e)
         return None
 
-    def get_value(self, client_id):
+    def get_iri(self, client_id):
         """
         gets the client_id's value
 
@@ -98,7 +101,8 @@ class Cache(object):
         """
         try:
             cur = self._connection.cursor()
-            cur.execute("SELECT value FROM Cache WHERE client_id=:client_id;", {'client_id': client_id})
+            sql_stmt = "SELECT value FROM Cache WHERE client_id=:client_id;"
+            cur.execute(sql_stmt, {'client_id': client_id})
             record = cur.fetchone()
             return record[0] if record else None
         except Exception as e:
@@ -116,10 +120,14 @@ class Cache(object):
         """
         try:
             cur = self._connection.cursor()
-            cur.execute("INSERT INTO Cache VALUES (:client_id, :value, :checksum);", {'client_id': client_id,
-                                                                                      'value': value,
-                                                                                      'checksum': checksum})
-            self._connection.commit()
+            try:
+                sql_stmt = "INSERT INTO Cache('client_id', 'value', 'checksum') VALUES (:client_id, :value, :checksum);"
+                cur.execute(sql_stmt, {'client_id': client_id, 'value': value, 'checksum': checksum})
+                self._connection.commit()
+            except sqlite3.IntegrityError as e:
+                sql_stmt = "UPDATE Cache SET value=:value, checksum=:checksum WHERE client_id=:client_id;"
+                cur.execute(sql_stmt, {'client_id': client_id, 'value': value, 'checksum': checksum})
+                self._connection.commit()
             return True
         except Exception as e:
             print(e)
