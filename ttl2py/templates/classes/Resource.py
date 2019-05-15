@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
+from hashlib import md5
 from ..properties.hasLinkTo import LinkValue
 
 """
@@ -72,8 +73,10 @@ class Resource(ABC):
                     continue
                 try:
                     prop_type = self.__dict__.get("_{}".format(attr))
-                    value = prop_type(value)
-                    properties[value.key()] = value.__json_struct__()
+                    tmp_value = prop_type(value)
+                    json_struct = tmp_value.__json_struct__()
+                    if json_struct:
+                        properties[tmp_value.key()] = tmp_value.__json_struct__()
                 except (TypeError, AttributeError) as e:
                     print(e)
 
@@ -123,7 +126,7 @@ class Resource(ABC):
         :return: integer, that represents the checksum
         """
 
-        def _calc_checksum(item):
+        def _calc_checksum(value):
             """
             caluculates the checksum of a given item (i.e. value)
 
@@ -131,39 +134,51 @@ class Resource(ABC):
             :return: int; checksum of item => 0 := neutral element
             """
 
-            if isinstance(item, LinkValue):
-                if 'iri' == item.linkType.lower() and item.target:
+            def _calc_md5(val):
+                """
+
+                :param val:
+                :return:
+                """
+                m = md5()
+                m.update(("{}".format(val)).encode(encoding='utf-8'))
+                return m.hexdigest()
+
+            checksum_md5 = ''
+            if value is None:
+                checksum_md5 = ''
+            elif isinstance(value, LinkValue):
+                if 'iri' == value.linkType.lower() and value.target:
                     # we want to deal with 'real' links, only (i.e. from type 'iri' and not empty)
-                    return hash(item.target)
+                    checksum_md5 = _calc_md5(value.target)
+            elif isinstance(value, list) or isinstance(value, set):
+                # process collection
+                if len(value) == 0:
+                    checksum_md5 = ''
+                else:
+                    tmp_checksum = 0
+                    for item in value:
+                        if isinstance(item, LinkValue):
+                            # process LinkValue values
+                            if 'iri' == item.linkType.lower() and item.target:
+                                # we want to deal with 'real' links, only (i.e. from type 'iri' and not empty)
+                                tmp_checksum ^= int(_calc_md5(item.target), 16)
+                            continue
+                        tmp_checksum ^= int(_calc_md5(value), 16)
+                    checksum_md5 = "{:X}".format(tmp_checksum)
             else:
-                return hash(item)
+                checksum_md5 = _calc_md5(value)
+            return checksum_md5
 
-            return 0
-
+        checksum_value = 0
         if not type(self) is Resource and self._namespace:
-            checksum_value = 0
-            for attr, value in self.__dict__.items():
-                if attr.startswith('_'):
-                    if attr in ['_namespace', '_project_id', '_name']:
-                        checksum_value ^= hash(value)
+            for attr, value in sorted(self.__dict__.items()):
+                if attr.startswith('_') and attr not in ['_namespace', '_project_id', '_name']:
                     continue
 
-                try:
-                    checksum_value ^= (hash(attr) ^ _calc_checksum(value))
-                except TypeError as e:
-                    # this parts handles a collection of values
-                    # (i.e. a set or a list; dict has to be implemented)
-                    # calculate a property's checksum composed by a checksum of each item
-                    collection_checksum = 0
-                    try:
-                        for item in value:
-                            try:
-                                collection_checksum ^= _calc_checksum(item)
-                            except TypeError:
-                                continue
-                    except Exception:
-                        pass
+                attr_md5 = md5()
+                attr_md5.update(("{}:{}".format(attr, _calc_checksum(value))).encode(encoding='utf-8'))
 
-                    checksum_value ^= (hash(attr) ^ hash(collection_checksum))
+                checksum_value ^= int(attr_md5.hexdigest(), 16)
 
-        return checksum_value
+        return "{:032X}".format(checksum_value)
