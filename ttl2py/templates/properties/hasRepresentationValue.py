@@ -4,7 +4,7 @@
 from .hasValue import HasValue
 
 """
-hasLinkTo: definition to handle Knora Base Ontology (KBO) dates
+HasLinkToValue: definition to handle Knora Base Ontology (KBO) hasLinkToValue
 """
 
 __author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
@@ -17,7 +17,7 @@ __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
 
 
-class HasLinkTo(HasValue):  # Subclass int to get handy functions
+class HasRepresentationValue(HasValue):
     """
 
     """
@@ -27,7 +27,7 @@ class HasLinkTo(HasValue):  # Subclass int to get handy functions
 
         :param string:
         """
-        super(HasLinkTo, self).__init__(link)
+        super().__init__(link)
         self._name = 'LinkValue'
         self._property_type = 'link_value'
 
@@ -40,35 +40,5 @@ class HasLinkTo(HasValue):  # Subclass int to get handy functions
         """
 
         if key == '_value' and value is not None and not isinstance(value, str):
-            raise TypeError("Wrong data type for LinkValue")
+            raise TypeError("Wrong data type for hasLinkToValue")
         super().__setattr__(key, value)
-
-    def __repr__(self):
-        """
-
-        :return:
-        """
-        try:
-            return """['link_value': '{:s}']""".format(self._value)
-        except TypeError:
-            return
-
-    def __str__(self):
-        """
-
-        :return:
-        """
-        try:
-            return """['link_value': '{:s}']""".format(self._value)
-        except TypeError:
-            return
-
-#    def json(self):
-#        """
-#
-#        :return:
-#        """
-#        try:
-#            return [{'link_value': '{:s}'.format(self._value)}]
-#        except TypeError:
-#            return

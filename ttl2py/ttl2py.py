@@ -5,12 +5,14 @@ import getopt
 import os
 import pathlib
 import re
+import shutil
 import sys
 from os.path import commonprefix, isfile, exists
 from string import Template
 from urllib.parse import urlsplit
 from datetime import datetime
 from rdflib import Graph, BNode, RDF, URIRef, OWL, RDFS
+from rdflib import *
 from rdflib.namespace import Namespace, NamespaceManager
 
 from modules.filesystem import read_file, write_file
@@ -19,7 +21,7 @@ __author__ = "Sascha KAUFMANN"
 __copyright__ = "Copyright 2018, NIE-INE"
 __credits__ = []
 __license__ = "3-Clause BSD License"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Production"
@@ -28,6 +30,7 @@ header_information = None
 
 _KNORA_NS = Namespace("http://www.knora.org/ontology/")
 _KBO_NS = Namespace("http://www.knora.org/ontology/knora-base")
+KBO_NS = Namespace("http://www.knora.org/ontology/knora-base#")
 _DIRSEP = os.sep
 _TIMESTAMP = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -39,7 +42,7 @@ def is_shortcode(code):
     :param code:
     :return:
     """
-    p = re.compile('[0-9A-F]{4}')
+    p = re.compile('[0-9A-F]{4}|shared')
     try:
         if p.match(code):
             return True
@@ -101,7 +104,7 @@ def import_path(source_path, target_path):
     return path
 
 
-def file_comment(comment_type, ns, name, source=None):
+def generate_file_comment(comment_type, ns, name, source=None):
     """
 
     :param comment_type: kind of file (i.e. class or property)
@@ -242,7 +245,7 @@ def to_property_name(name):
     """
     try:
         return "{}{}".format(name[0].lower(), name[1:])
-    except AttributeError as e:
+    except (AttributeError, IndexError) as e:
         print(name, e)
     return name
 
@@ -367,7 +370,6 @@ def property_dependencies(graph, uri):
 
     properties = set()
     try:
-        properties = set()
         for obj in graph.objects(subject=URIRef(uri),
                                  predicate=RDFS.subClassOf):
             # if isinstance(obj, BNode):
@@ -378,12 +380,35 @@ def property_dependencies(graph, uri):
                 print(e)
 
         # TODO: the following is just a quick-fix! Make it more 'intelligent'! (SK_20180302)
-        properties.discard('http://www.knora.org/ontology/knora-base#hasStillImageFileValue')
+        value_list = [uri for uri in properties if uri.endswith('Value')]
+        for value in value_list:
+            properties.discard(value) if value[:-5] in properties else None
 
     except Exception as e:
         print(e)
 
     return properties
+
+
+def prop_coordinates(graph, uri):
+    """
+
+    :param graph:
+    :param uri:
+    :return:
+    """
+
+    coordinates = {}
+
+    if uri in graph_properties(graph):
+        try:
+            coordinates['subPropertyOf'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=RDFS.subPropertyOf))
+            coordinates['subjectClassConstraint'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.subjectClassConstraint))
+            coordinates['objectClassConstraint'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint))
+        except Exception as e:
+            pass
+
+    return coordinates
 
 
 def property_class_dependencies(graph, uri, allowed_ns=None):
@@ -397,6 +422,72 @@ def property_class_dependencies(graph, uri, allowed_ns=None):
 
     classes = set()
     try:
+        a = prop_coordinates(graph=graph, uri=uri)
+        # filter LinkValues
+        if URIRef('{}LinkValue'.format(KBO_NS)) in a['objectClassConstraint']:
+            return classes
+
+        value_uri = URIRef("{}Value".format(str(uri)))
+        b = prop_coordinates(graph=graph, uri=value_uri)
+        if str(uri).endswith("Value"):
+            for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
+                if str(o) == '{}LinkValue'.format(KBO_NS):
+                    return classes
+
+        value_uri = URIRef("{}Value".format(str(uri)))
+        if value_uri in graph_properties(graph):
+            for o in graph.objects(subject=value_uri, predicate=KBO_NS.objectClassConstraint):
+                if str(o) == '{}hasLinkTo'.format(KBO_NS):
+
+                    for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
+                        print(o)
+                        break
+
+        # for o in graph.objects(subject=URIRef(uri), predicate=RDFS.subPropertyOf):
+        #     if isinstance(o, URIRef):
+        #         for u in graph.objects(subject=o, predicate=RDFS.subPropertyOf):
+        #             str_o = str(u)
+        #             if str_o == '{}hasLinkTo'.format(KBO_NS):
+        #                 for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
+        #                     b = 0
+        #                     if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
+        #                         str_o = str(o)
+        #                         if str_o != uri:
+        #                             ns, frag = ns_fragement(str_o)
+        #                             if ns and frag:
+        #                                 if allowed_ns and ns not in allowed_ns:
+        #                                     continue
+        #                                 classes.add(str_o)
+        #                                 break
+        #             elif str_o != uri:
+        #                 ns, frag = ns_fragement(str_o)
+        #                 if ns and frag:
+        #                     if allowed_ns and ns not in allowed_ns:
+        #                         continue
+        #                     classes.add(str_o)
+
+        # for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
+        #     if isinstance(o, URIRef):
+        #         str_o = str(o)
+        #         if str_o == 'http://www.knora.org/ontology/knora-base#hasValue':
+        #             for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
+        #                 b = 0
+        #                 if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
+        #                     str_o = str(o)
+        #                     if str_o != uri:
+        #                         ns, frag = ns_fragement(str_o)
+        #                         if ns and frag:
+        #                             if allowed_ns and ns not in allowed_ns:
+        #                                 continue
+        #                             classes.add(str_o)
+        #                             break
+        #         elif str_o != uri:
+        #             ns, frag = ns_fragement(str_o)
+        #             if ns and frag:
+        #                 if allowed_ns and ns not in allowed_ns:
+        #                     continue
+        #                 classes.add(str_o)
+
         for o in graph.objects(subject=URIRef(uri),
                                predicate=RDFS.subPropertyOf):
 
@@ -501,6 +592,7 @@ def create_classes(template_file, graph, mappings, src_filename):
         argument = ""
         argument_comment = ""
         namespace = ""
+        class_internal_vars = ""
         class_properties = ""
         class_properties_types = ""
 
@@ -514,14 +606,19 @@ def create_classes(template_file, graph, mappings, src_filename):
         prop_dependencies = property_dependencies(graph=graph,
                                                   uri=class_uri)
 
+        if 'http://www.knora.org/ontology/knora-base#hasStillImageFileValue' in prop_dependencies:
+            class_internal_vars = "        self._image_file = None\n"
+            prop_dependencies.discard('http://www.knora.org/ontology/knora-base#hasStillImageFileValue')
+
+
         # $class_name
         class_name = to_class_name(class_fragment)
 
         # $general_comment
-        general_comment = file_comment('class',
-                                       ns=class_ns,
-                                       name=class_name,
-                                       source=src_filename)
+        general_comment = generate_file_comment('class',
+                                                ns=class_ns,
+                                                name=class_name,
+                                                source=src_filename)
 
         # $class_comment
         class_comment = extract_comment(graph, uri=class_uri)
@@ -644,6 +741,7 @@ def create_classes(template_file, graph, mappings, src_filename):
                                             argument=argument,
                                             argument_comment=argument_comment,
                                             namespace=class_ns,
+                                            class_internal_vars=class_internal_vars,
                                             class_properties=class_properties,
                                             class_properties_types=class_properties_types)
         filename = "{}{ps}{}.py".format(class_dir, class_name, ps=_DIRSEP)
@@ -661,6 +759,10 @@ def create_properties(template_file, graph, mappings, src_filename):
     """
 
     for property_uri in graph_properties(graph=graph):
+        if str(property_uri).endswith('Value'):
+            if URIRef(str(property_uri)[:-5]) in graph_properties(graph=graph):
+                continue
+
         known_namespaces = ''
         module_import = ''
         general_comment = ''
@@ -669,6 +771,7 @@ def create_properties(template_file, graph, mappings, src_filename):
         class_comment = ''
         property_ns = ''
         property_name = ''
+        property_internal_vars = ''
 
         property_ns, property_fragment = ns_fragement(property_uri)
         property_dir = "{}{ps}properties".format(mappings[property_ns]['path'], ps=_DIRSEP)
@@ -680,7 +783,7 @@ def create_properties(template_file, graph, mappings, src_filename):
         property_name = property_fragment
 
         # $general_comment
-        general_comment = file_comment('property', ns=property_ns, name=class_name, source=src_filename)
+        general_comment = generate_file_comment('property', ns=property_ns, name=class_name, source=src_filename)
 
         # $class_comment
         class_comment = extract_comment(graph, uri=property_uri)
@@ -700,6 +803,14 @@ def create_properties(template_file, graph, mappings, src_filename):
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
             cls_data[dep_name].append((ns, alias))
+
+        if URIRef("{}Value".format(str(property_uri))) in graph_properties(graph=graph):
+            coordinates = prop_coordinates(graph=graph, uri=property_uri)
+            try:
+                obj_class_constraint = str(coordinates['objectClassConstraint'].pop())
+                property_internal_vars = '        self._objectClassConstraint = "{}"'.format(obj_class_constraint)
+            except Exception as e:
+                print(e)
 
         modules_to_import = []
         parent_properties = []
@@ -726,7 +837,8 @@ def create_properties(template_file, graph, mappings, src_filename):
                                             sub_property_of=sub_property_of,
                                             class_comment=class_comment,
                                             namespace=property_ns,
-                                            name=property_name)
+                                            name=property_name,
+                                            property_internal_vars=property_internal_vars)
         filename = "{}{ps}{}.py".format(property_dir, to_property_name(property_name), ps=_DIRSEP)
         write_file(filename=filename, content=content)
 
@@ -800,12 +912,28 @@ def create_kbo(template_dir, target_dir):
         context_directory = "{}/{}".format(target_dir, context)
         for (dirpath, dirnames, filenames) in os.walk(context_templates):
             for filename in filenames:
-                if filename.startswith('kbo_') and filename.endswith('.tpl'):
-                    target_file = "{}/{}.py".format(context_directory,
-                                                    filename[4:-4])
-                    template = read_template(filename="{}/{}".format(context_templates, filename))
-                    content = template.substitute()
-                    write_file(filename=target_file, content=content)
+                if filename.endswith('.py'):
+                    shutil.copy(src="{}/{}".format(context_templates, filename),
+                                dst="{}/{}".format(context_directory, filename))
+
+    return
+
+
+def create_utils(source_dir, target_dir):
+    """
+
+    :param source_dir: directory, where we find the templates
+    :param target_dir: directory, from where we derive the files' final
+                       destination(s)
+    :return:
+    """
+
+    pathlib.Path(target_dir).mkdir(parents=True, exist_ok=True)
+    for (dirpath, dirnames, filenames) in os.walk(source_dir):
+        for filename in filenames:
+            shutil.copy(src = "{}/{}".format(source_dir, filename),
+                        dst = "{}/{}".format(target_dir, filename))
+
     return
 
 
@@ -987,12 +1115,14 @@ def main(argv):
     #    fs_ns_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
     create_ns_structure(ns_fs_mappings)
 
+    create_utils(source_dir="{}{}_utils".format(template_dir, _DIRSEP),
+                 target_dir="{}{}_utils".format(target_dir, _DIRSEP))
     create_kbo(template_dir=template_dir,
                target_dir=ns_fs_mappings['http://www.knora.org/ontology/knora-base']['path'])
 
     data = {'template_dir': template_dir, 'ps': _DIRSEP}
-    class_template = "{template_dir}{ps}classes{ps}Resource.tpl".format(**data)
-    property_template = "{template_dir}{ps}properties{ps}property.tpl".format(**data)
+    class_template = "{template_dir}{ps}classes{ps}_Resource.tpl".format(**data)
+    property_template = "{template_dir}{ps}properties{ps}_property.tpl".format(**data)
 
     for file in files_to_process:
         try:

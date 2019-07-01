@@ -1,24 +1,6 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-
-"""
-RichtextValue: definition of a datatype to handle Knora Base Ontology (KBO) text
-"""
-
-__author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
-__copyright__ = "Copyright 2017, 2018; NIE-INE (nie-ine.ch)"
-__credits__ = [""]
-__license__ = "Apache License, Version 2 [https://www.apache.org/licenses/LICENSE-2.0.html]"
-__version__ = "0.0.1"
-__maintainer__ = "NIE-INE (nie-ine.ch)"
-__email__ = "sascha.kaufmann@unibas.ch"
-__status__ = "Prototype"
-
-
-#!/usr/local/bin/python3
-# -*- coding: utf-8 -*-
-
 from .hasValue import HasValue
 
 """
@@ -29,7 +11,7 @@ __author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
 __copyright__ = "Copyright 2017, 2018; NIE-INE (nie-ine.ch)"
 __credits__ = [""]
 __license__ = "Apache License, Version 2 [https://www.apache.org/licenses/LICENSE-2.0.html]"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __maintainer__ = "NIE-INE (nie-ine.ch)"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
@@ -58,7 +40,9 @@ class TextValue(HasValue):  # Subclass string to get handy functions
         :return:
         """
 
-        if key == '_value' and value is not None and not isinstance(value, str):
+        if (key == '_value' and value is not None
+                and not isinstance(value, str)
+                and not (isinstance(value, list) or isinstance(value, set))):
             raise TypeError("Wrong data type for textValue")
         super().__setattr__(key, value)
 

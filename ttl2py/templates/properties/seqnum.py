@@ -24,7 +24,7 @@ class Seqnum(IntValue):  # Subclass int to get handy functions
     def __init__(self, number):
         """
 
-        :param text:
+        :param number:
         """
         super(Seqnum, self).__init__(number)
         self._name = 'seqnum'

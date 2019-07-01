@@ -22,3 +22,4 @@ class $class_name($sub_property_of):
 
         self._namespace = "$namespace"
         self._name = "$name"
+$property_internal_vars

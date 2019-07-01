@@ -45,5 +45,5 @@ class DecimalValue(HasValue):
 
         :return:
         """
-        if self._value or self.value == 0:
-            return [{self._json['value_type']: self._value}]
+        if self._value or self._value not in ['', None]:
+            super().__json_struct__()

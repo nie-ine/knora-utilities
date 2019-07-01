@@ -11,7 +11,7 @@ __author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
 __copyright__ = "Copyright 2017, 2018; NIE-INE (nie-ine.ch)"
 __credits__ = [""]
 __license__ = "Apache License, Version 2 [https://www.apache.org/licenses/LICENSE-2.0.html]"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __maintainer__ = "NIE-INE (nie-ine.ch)"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
@@ -37,7 +37,9 @@ class IntValue(HasValue):  # Subclass int to get handy functions
         :return:
         """
 
-        if key == '_value' and value is not None and not isinstance(value, int):
+        if (key == '_value' and value is not None
+                and not isinstance(value, int)
+                and not (isinstance(value, list) or isinstance(value, set))):
             raise TypeError("Wrong data type for IntValue")
         super().__setattr__(key, value)
 
@@ -46,5 +48,5 @@ class IntValue(HasValue):  # Subclass int to get handy functions
 
         :return:
         """
-        if self._value or self.value == 0:
-            return [{self._property_type: self._value}]
+        if self._value or self._value == 0:
+            super().__json_struct__()
