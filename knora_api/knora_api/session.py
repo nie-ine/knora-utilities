@@ -5,7 +5,7 @@ __author__ = "Sascha KAUFMANN"
 __copyright__ = "Copyright 2018, NIE-INE"
 __credits__ = []
 __license__ = "3-Clause BSD License"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Beta"
@@ -15,6 +15,7 @@ import traceback
 
 import requests
 
+from datetime import datetime
 from json import dumps
 from urllib.parse import quote_plus
 from requests.adapters import HTTPAdapter
@@ -88,12 +89,6 @@ class Session(object):
 
         self.open()
 
-    # @property
-    # def open(self):
-    #     """Return True if the connection is open"""
-    #     return self._sock is not None
-    #
-
     def open(self):
         self.close()
         try:
@@ -148,10 +143,6 @@ class Session(object):
             if r.status_code != 200:
                 print(r)
                 print("Post failed: {}".format(r.content.decode('utf-8')))
-                # print("Post failed {} / {} / {} / {}".format(r.content.decode('utf-8'),
-                #                                              data or '--',
-                #                                              json or '--',
-                #                                              kwargs.get('files', '--')))
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -299,21 +290,23 @@ class Session(object):
     def get_v1_resource_xmlimportschemas(self, ontology_iri, **kwargs):
         """
 
-        :param ontology_iri:
+        :param ontology_iri: the ontology IRI, for which we want the schema for
         :param kwargs:
-        :return:
+        :return: name of the generated file that holds the schema
         """
 
         try:
+            timestamp_utc = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            filename = 'xmlimportschemas_{}.zip'.format(timestamp_utc)
             url = "{}{}/xmlimportschemas/{}".format(self.knora_server,
                                                     KNORA_V1.V1_RESOURCES,
                                                     ontology_iri)
             r = requests.get(url=url, )
-            with open('blub.zip', 'wb') as f:
+            with open(filename, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     f.write(chunk)
 
-            return "blub"
+            return filename
         except Exception as e:
             print(e)
             if DEBUG:
@@ -362,7 +355,7 @@ class Session(object):
 
         return response
 
-    # wrappers for existing functions to make the live more easy
+    # wrappers for existing functions to make the live plus facile
 
     def get_projects(self):
         """
@@ -488,29 +481,32 @@ class Session(object):
 
     def get_cached_record(self, client_id):
         """
+        gets the record for a given client id (key) from the cache, if available
 
-        :param client_id:
-        :return:
+        :param client_id: the records's identifier
+        :return: a triple with (client_id, IRI, checksum) if the record exists,
+                 None, otherwise.
         """
 
         return self._cache.get(client_id=client_id)
 
     def set_cached_record(self, client_id, iri, checksum=None):
         """
+        write a record (client_id, iri, checksum) into the cache
         
-        :param client_id: 
-        :param iri: 
-        :param checksum: 
-        :return: 
+        :param client_id: the record's identifier/label/key
+        :param iri: the IRI that represents the resource inside the triplestore
+        :param checksum: the resource's checksum
+        :return: True, in case of success; false otherwise
         """""
 
         return self._cache.set(client_id=client_id, value=iri, checksum=checksum)
 
     def get_cached_iri(self, client_id):
         """
-
-        :param client_id:
-        :return:
+        gets the resource's IRI from the cache that is represent by the given identifier/label
+        :param client_id: the resource's identifier (record key)
+        :return: the stored IRI in case of success, None otherwise
         """
 
         return self._cache.get_iri(client_id=client_id)
