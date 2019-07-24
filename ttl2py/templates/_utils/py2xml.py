@@ -135,6 +135,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                         properties[property_key] = {'xmlns': xmlns,
                                                     'name': prop_dummy._name,
                                                     'knoraType': prop_dummy._property_type,
+                                                    'class_name': attr,
                                                     'sort_idx': sort_idx}
 
                         if prop_dummy._property_type == 'link_value':
@@ -152,7 +153,6 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                 nsmap[xmlns_prefix] = xmlns
                             properties[property_key]['objectClassConstraint'] = (xmlns, target_name)
                     except (TypeError, AttributeError) as e:
-                        print("1")
                         print(e)
                         print(resource_key)
 
@@ -161,6 +161,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                     properties[property_key] = {'xmlns': namespaces[resource_ns][1],
                                                 'name': 'seqnum',
                                                 'knoraType': 'int_value',
+                                                'class_name': 'seqnum',
                                                 'sort_idx': (namespaces[resource_ns][0], '_', 'seqnum')}
 
                 resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[1]['sort_idx']))
@@ -214,7 +215,10 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
 
             for key, prop_info in properties_info.items():
                 try:
-                    property_value = resource.__dict__.get(prop_info['name'])
+                    property_value = resource.__dict__.get(prop_info['class_name'])
+                    if property_value in ['', {}, None]:
+                        continue
+
                     if prop_info['name'] == 'seqnum':
                         value = resource.__dict__.get(prop_info['name'])
                         if value is not None:
@@ -224,39 +228,38 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                             cur_entry.text = str(value)
                         continue
 
-                    if property_value not in ['', {}, None]:
-                        if isinstance(property_value, str) or isinstance(property_value, tuple):
+                    if isinstance(property_value, str) or isinstance(property_value, tuple):
+                        prop_values = {property_value}
+                    else:
+                        try:
+                            prop_values = set(property_value)
+                        except TypeError:
                             prop_values = {property_value}
-                        else:
-                            try:
-                                prop_values = set(property_value)
-                            except TypeError:
-                                prop_values = {property_value}
-                        if prop_info['xmlns'] == resource_xmlns:
-                            tag_name = prop_info['name']
-                        else:
-                            tag_name = key.split(':')[1]
-                        tag = _tag_tpl.format(resource_xmlns, tag_name)
+                    if prop_info['xmlns'] == resource_xmlns:
+                        tag_name = prop_info['name']
+                    else:
+                        tag_name = key.split(':')[1]
+                    tag = _tag_tpl.format(resource_xmlns, tag_name)
 
-                        for value in prop_values:
-                            if isinstance(value, bool):
-                                value = 1 if value is True else 0
-                            if prop_info['knoraType'] == 'link_value':
-                                link = etree.SubElement(resource_root, tag)
-                                linkType = value.linkType
-                                target = value.target
-                                a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
-                                                    prop_info['objectClassConstraint'][1])
-                                etree.SubElement(link,
-                                                 a,
-                                                 knoraType=prop_info['knoraType'],
-                                                 linkType=linkType,
-                                                 target=target)
-                            else:
-                                cur_entry = etree.SubElement(resource_root,
-                                                             tag,
-                                                             knoraType=prop_info['knoraType'])
-                                cur_entry.text = str(value)
+                    for value in prop_values:
+                        if isinstance(value, bool):
+                            value = 1 if value is True else 0
+                        if prop_info['knoraType'] == 'link_value':
+                            link = etree.SubElement(resource_root, tag)
+                            linkType = value.linkType
+                            target = value.target
+                            a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
+                                                prop_info['objectClassConstraint'][1])
+                            etree.SubElement(link,
+                                             a,
+                                             knoraType=prop_info['knoraType'],
+                                             linkType=linkType,
+                                             target=target)
+                        else:
+                            cur_entry = etree.SubElement(resource_root,
+                                                         tag,
+                                                         knoraType=prop_info['knoraType'])
+                            cur_entry.text = str(value)
                 except Exception as e:
                     print(traceback.format_exc())
                     print(e)
