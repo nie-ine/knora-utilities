@@ -71,15 +71,14 @@ def _sanitize_id(text):
     return "_".join(text.split())
 
 
-def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
+def __xml_struct__(resource_set, standard_xmlns=None, schema_xsd=None):
     """
 
     :param resource_set: a set that contains the resource to create
     :return: string that contains the created xml-description to be used with knora
     """
 
-    nsmap = {'knoraXmlImport': _xmlns_knoraXmlImport,
-             None: standard_xmlns}
+    nsmap = {'knoraXmlImport': _xmlns_knoraXmlImport}
 
     namespaces = {}
     resource_info = {}
@@ -89,8 +88,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
             resource = entry[0]
             resource_ns = "" if resource._namespace == _knora_base_ns else resource._namespace
             if resource_ns and resource_ns not in namespaces:
-                onto_code = resource_ns.split('/')[-2]
-                onto_name = resource_ns.split('/')[-1]
+                onto_code, onto_name = resource_ns.split('/')[-2:]
                 prefix_name = '0000' if onto_code == 'shared' else onto_code
                 xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
                 xmlns = _XMLNS_tpl.format(onto_code, onto_name)
@@ -111,8 +109,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                         prop_dummy = prop_type(None)
                         property_ns = prop_dummy._namespace
                         if property_ns != _knora_base_ns:
-                            onto_code = property_ns.split('/')[-2]
-                            onto_name = property_ns.split('/')[-1]
+                            onto_code, onto_name = property_ns.split('/')[-2:]
                             prefix_name = '0000' if onto_code == 'shared' else onto_code
                             xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
                             xmlns = _XMLNS_tpl.format(onto_code, onto_name)
@@ -144,8 +141,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                             if target_ns == _knora_base_ns:
                                  xmlns = _xmlns_knoraXmlImport
                             else:
-                                onto_code = target_ns.split('/')[-2]
-                                onto_name = target_ns.split('/')[-1]
+                                onto_code, onto_name = target_ns.split('/')[-2:]
                                 prefix_name = '0000' if onto_code == 'shared' else onto_code
                                 xmlns_prefix = _xmlns_prefix_tpl.format(prefix_name, onto_name)
                                 xmlns = _XMLNS_tpl.format(onto_code, onto_name)
@@ -165,6 +161,21 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                                                 'sort_idx': (namespaces[resource_ns][0], '_', 'seqnum')}
 
                 resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[1]['sort_idx']))
+
+        # set the standard_xmlns
+        if standard_xmlns:
+            # either explicitly, ...
+            nsmap[None] = standard_xmlns
+        else:
+            # ... or try to detect it by taking the first known
+            # project ontology namespace that is not a shared ontology
+            for _, value in namespaces.items():
+                if value[0].startswith('p0000-'):
+                    continue
+                nsmap[None] = value[1]
+                break
+            else:
+                KeyError("standard_xmlns not given and couldn't be detected automatically")
     except Exception as e:
         print("2")
         print(e)
@@ -201,12 +212,10 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
 
             try:
                 if resource._file:
-                    path = resource._file['path']
-                    mimetype = resource._file['mimetype']
                     etree.SubElement(resource_root,
                                      _tag_tpl.format(_xmlns_knoraXmlImport, 'file'),
-                                     path=path,
-                                     mimetype=mimetype)
+                                     path=resource._file['path'],
+                                     mimetype=resource._file['mimetype'])
                     label.text = resource._label
             except AttributeError as e:
                 pass
@@ -246,15 +255,13 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
                             value = 1 if value is True else 0
                         if prop_info['knoraType'] == 'link_value':
                             link = etree.SubElement(resource_root, tag)
-                            linkType = value.linkType
-                            target = value.target
                             a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
                                                 prop_info['objectClassConstraint'][1])
                             etree.SubElement(link,
                                              a,
                                              knoraType=prop_info['knoraType'],
-                                             linkType=linkType,
-                                             target=target)
+                                             linkType=value.linkType,
+                                             target=value.target)
                         else:
                             cur_entry = etree.SubElement(resource_root,
                                                          tag,
@@ -269,7 +276,7 @@ def __xml_struct__(resource_set, standard_xmlns, schema_xsd=None):
         print(e)
     return
 
-def xml_struct(resource_set, standard_xmlns, schema_xsd=None, encoding=None):
+def xml_struct(resource_set, standard_xmlns=None, schema_xsd=None, encoding=None):
     """
 
     :param resource_set:
