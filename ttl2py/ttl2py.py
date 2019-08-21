@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import code
 import getopt
 import os
 import pathlib
@@ -12,7 +11,6 @@ from string import Template
 from urllib.parse import urlsplit
 from datetime import datetime
 from rdflib import Graph, BNode, RDF, URIRef, OWL, RDFS
-from rdflib import *
 from rdflib.namespace import Namespace, NamespaceManager
 
 from modules.filesystem import read_file, write_file
@@ -25,8 +23,6 @@ __version__ = "0.0.3"
 __maintainer__ = "Sascha KAUFMANN"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Production"
-
-header_information = None
 
 _KNORA_NS = Namespace("http://www.knora.org/ontology/")
 _KBO_NS = Namespace("http://www.knora.org/ontology/knora-base")
@@ -42,9 +38,9 @@ def is_shortcode(code):
     :param code:
     :return:
     """
-    p = re.compile('[0-9A-F]{4}|shared')
+    re_code = re.compile('[0-9A-F]{4}|shared')
     try:
-        if p.match(code):
+        if re_code.match(code):
             return True
     except TypeError:
         pass
@@ -104,17 +100,17 @@ def import_path(source_path, target_path):
     return path
 
 
-def generate_file_comment(comment_type, ns, name, source=None):
+def generate_file_comment(comment_type, namespace, name, source=None):
     """
 
     :param comment_type: kind of file (i.e. class or property)
-    :param ns: namespace
+    :param namespace: namespace
     :param name: class or property name
     :param source: the (turtle) source file
     :return:
     """
     try:
-        ns_name = "{}:{}".format(ns.split('/')[-1], name)
+        ns_name = "{}:{}".format(namespace.split('/')[-1], name)
         description = "definition of {} {}".format(comment_type, ns_name)
         description += "\n\ncreated at: {}".format(_TIMESTAMP)
         if source:
@@ -125,18 +121,18 @@ def generate_file_comment(comment_type, ns, name, source=None):
     return ""
 
 
-def generate_file_description(desc_type, ns, name, source=None):
+def generate_file_description(desc_type, namespace, name, source=None):
     """
 
-    :param desc_type:
-    :param ns:
+    :param desc_type: description type
+    :param namespace:
     :param name:
     :param created:
     :param source:
     :return:
     """
     try:
-        ns_name = "{}:{}".format(ns.split('/')[-1], name)
+        ns_name = "{}:{}".format(namespace.split('/')[-1], name)
         description = "definition of {} {}".format(desc_type, ns_name)
         description += "\n\ncreated at: {}".format(_TIMESTAMP)
         if source:
@@ -312,18 +308,18 @@ def ns_fragement(uri):
     :param uri:
     :return:
     """
-    ns = None,
-    fragment = None
     try:
         components = urlsplit(uri)
-        ns = "{}://{}{}".format(components.scheme,
-                                components.netloc,
-                                components.path)
+        namespace = "{}://{}{}".format(components.scheme,
+                                       components.netloc,
+                                       components.path)
         fragment = components.fragment
     except Exception as e:
         print(e)
+        namespace = None
+        fragment = None
 
-    return ns, fragment
+    return namespace, fragment
 
 
 def class_dependencies(graph, uri, allowed_ns=None):
@@ -337,15 +333,15 @@ def class_dependencies(graph, uri, allowed_ns=None):
 
     classes = set()
     try:
-        for o in graph.objects(subject=URIRef(uri),
-                               predicate=RDFS.subClassOf):
-            str_o = str(o)
-            if isinstance(o, URIRef) and str_o != uri:
-                ns, frag = ns_fragement(str_o)
-                if ns and frag:
-                    if allowed_ns and ns not in allowed_ns:
+        for obj in graph.objects(subject=URIRef(uri),
+                                 predicate=RDFS.subClassOf):
+            str_obj = str(obj)
+            if isinstance(obj, URIRef) and str_obj != uri:
+                namespace, frag = ns_fragement(str_obj)
+                if namespace and frag:
+                    if allowed_ns and namespace not in allowed_ns:
                         continue
-                    classes.add(str_o)
+                    classes.add(str_obj)
     except Exception as e:
         print(e)
 
@@ -372,10 +368,10 @@ def property_dependencies(graph, uri):
     try:
         for obj in graph.objects(subject=URIRef(uri),
                                  predicate=RDFS.subClassOf):
-            # if isinstance(obj, BNode):
             try:
-                for o in graph.objects(subject=obj, predicate=OWL.onProperty):
-                    properties.add(str(o))
+                for obj in graph.objects(subject=obj,
+                                         predicate=OWL.onProperty):
+                    properties.add(str(obj))
             except Exception as e:
                 print(e)
 
@@ -402,9 +398,9 @@ def prop_coordinates(graph, uri):
 
     if uri in graph_properties(graph):
         try:
-            coordinates['subPropertyOf'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=RDFS.subPropertyOf))
-            coordinates['subjectClassConstraint'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.subjectClassConstraint))
-            coordinates['objectClassConstraint'] = set(o for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint))
+            coordinates['subPropertyOf'] = set(obj for obj in graph.objects(subject=URIRef(uri), predicate=RDFS.subPropertyOf))
+            coordinates['subjectClassConstraint'] = set(obj for obj in graph.objects(subject=URIRef(uri), predicate=KBO_NS.subjectClassConstraint))
+            coordinates['objectClassConstraint'] = set(obj for obj in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint))
         except Exception as e:
             pass
 
@@ -427,90 +423,49 @@ def property_class_dependencies(graph, uri, allowed_ns=None):
         if URIRef('{}LinkValue'.format(KBO_NS)) in a['objectClassConstraint']:
             return classes
 
-        value_uri = URIRef("{}Value".format(str(uri)))
-        b = prop_coordinates(graph=graph, uri=value_uri)
-        if str(uri).endswith("Value"):
-            for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
-                if str(o) == '{}LinkValue'.format(KBO_NS):
+#        value_uri = URIRef("{}Value".format(str(uri)))
+        elif str(uri).endswith("Value"):
+            subject = URIRef(uri)
+            predicate = KBO_NS.objectClassConstraint
+            for obj in graph.objects(subject=subject,
+                                     predicate=predicate):
+                if str(obj) == '{}LinkValue'.format(KBO_NS):
                     return classes
 
-        value_uri = URIRef("{}Value".format(str(uri)))
-        if value_uri in graph_properties(graph):
-            for o in graph.objects(subject=value_uri, predicate=KBO_NS.objectClassConstraint):
-                if str(o) == '{}hasLinkTo'.format(KBO_NS):
+#        value_uri = URIRef("{}Value".format(str(uri)))
+#        if value_uri in graph_properties(graph):
+#            subject = value_uri
+#            predicate = KBO_NS.objectClassConstraint
+#            for o in graph.objects(subject=subject, predicate=predicate):
+#                if str(o) == '{}hasLinkTo'.format(KBO_NS):
+#                    subj = URIRef(uri)
+#                    pred = KBO_NS.objectClassConstraint
+#                    for o in graph.objects(subject=subj, predicate=pred):
+#                        print(o)
+#                        break
 
-                    for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
-                        print(o)
-                        break
+        for obj in graph.objects(subject=URIRef(uri),
+                                 predicate=RDFS.subPropertyOf):
 
-        # for o in graph.objects(subject=URIRef(uri), predicate=RDFS.subPropertyOf):
-        #     if isinstance(o, URIRef):
-        #         for u in graph.objects(subject=o, predicate=RDFS.subPropertyOf):
-        #             str_o = str(u)
-        #             if str_o == '{}hasLinkTo'.format(KBO_NS):
-        #                 for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
-        #                     b = 0
-        #                     if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
-        #                         str_o = str(o)
-        #                         if str_o != uri:
-        #                             ns, frag = ns_fragement(str_o)
-        #                             if ns and frag:
-        #                                 if allowed_ns and ns not in allowed_ns:
-        #                                     continue
-        #                                 classes.add(str_o)
-        #                                 break
-        #             elif str_o != uri:
-        #                 ns, frag = ns_fragement(str_o)
-        #                 if ns and frag:
-        #                     if allowed_ns and ns not in allowed_ns:
-        #                         continue
-        #                     classes.add(str_o)
-
-        # for o in graph.objects(subject=URIRef(uri), predicate=KBO_NS.objectClassConstraint):
-        #     if isinstance(o, URIRef):
-        #         str_o = str(o)
-        #         if str_o == 'http://www.knora.org/ontology/knora-base#hasValue':
-        #             for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
-        #                 b = 0
-        #                 if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
-        #                     str_o = str(o)
-        #                     if str_o != uri:
-        #                         ns, frag = ns_fragement(str_o)
-        #                         if ns and frag:
-        #                             if allowed_ns and ns not in allowed_ns:
-        #                                 continue
-        #                             classes.add(str_o)
-        #                             break
-        #         elif str_o != uri:
-        #             ns, frag = ns_fragement(str_o)
-        #             if ns and frag:
-        #                 if allowed_ns and ns not in allowed_ns:
-        #                     continue
-        #                 classes.add(str_o)
-
-        for o in graph.objects(subject=URIRef(uri),
-                               predicate=RDFS.subPropertyOf):
-
-            if isinstance(o, URIRef):
-                str_o = str(o)
-                if str_o == 'http://www.knora.org/ontology/knora-base#hasValue':
+            if isinstance(obj, URIRef):
+                str_obj = str(obj)
+                if str_obj == 'http://www.knora.org/ontology/knora-base#hasValue':
                     for (p, o) in graph.predicate_objects(subject=URIRef(uri)):
-                        b = 0
                         if str(p) == "http://www.knora.org/ontology/knora-base#objectClassConstraint":
                             str_o = str(o)
                             if str_o != uri:
-                                ns, frag = ns_fragement(str_o)
-                                if ns and frag:
-                                    if allowed_ns and ns not in allowed_ns:
+                                namespace, frag = ns_fragement(str_o)
+                                if namespace and frag:
+                                    if allowed_ns and namespace not in allowed_ns:
                                         continue
                                     classes.add(str_o)
                                     break
-                elif str_o != uri:
-                    ns, frag = ns_fragement(str_o)
-                    if ns and frag:
-                        if allowed_ns and ns not in allowed_ns:
+                elif str_obj != uri:
+                    namespace, frag = ns_fragement(str_obj)
+                    if namespace and frag:
+                        if allowed_ns and namespace not in allowed_ns:
                             continue
-                        classes.add(str_o)
+                        classes.add(str_obj)
 
     except Exception as e:
         print(e)
@@ -591,7 +546,6 @@ def create_classes(template_file, graph, mappings, src_filename):
         class_comment = ""
         argument = ""
         argument_comment = ""
-        namespace = ""
         class_internal_vars = ""
         class_properties = ""
         class_properties_types = ""
@@ -616,7 +570,7 @@ def create_classes(template_file, graph, mappings, src_filename):
 
         # $general_comment
         general_comment = generate_file_comment('class',
-                                                ns=class_ns,
+                                                namespace=class_ns,
                                                 name=class_name,
                                                 source=src_filename)
 
@@ -635,7 +589,9 @@ def create_classes(template_file, graph, mappings, src_filename):
             for key in sorted(class_labels):
                 labels.append('{} ({})'.format(class_labels[key], key))
             plural = "s" if len(labels) > 1 else ""
-            class_comment = "{}\n\n    Label{}: {}".format(class_comment, plural, " / ".join(labels))
+            class_comment = "{}\n\n    Label{}: {}".format(class_comment,
+                                                           plural,
+                                                           " / ".join(labels))
 
         # $module_import
 
@@ -648,7 +604,6 @@ def create_classes(template_file, graph, mappings, src_filename):
             dep_name = to_class_name(dep_name)
             alias = None
             if dep_name == class_name or dep_name in cls_data:
-                # alias = "{}_{}".format(generate_alias(mappings[ns]['rel_path']), dep_name)
                 alias = "{}_{}".format(mappings[ns]['name'], dep_name)
             if dep_name not in cls_data:
                 cls_data[dep_name] = []
@@ -663,10 +618,10 @@ def create_classes(template_file, graph, mappings, src_filename):
                 import_str = "from {}.{} import {}".format(cur_path, key, to_class_name(key))
                 if item[1]:
                     tmp.append(item[1])
-                    modules_to_import.append("{} as {}".format(import_str, item[1]))
+                    import_str = "{} as {}".format(import_str, item[1])
                 else:
                     tmp.append(key)
-                    modules_to_import.append(import_str)
+                modules_to_import.append(import_str)
         sub_class_of = ", ".join(tmp) if tmp else ''
 
         prop_data = {}
@@ -680,6 +635,7 @@ def create_classes(template_file, graph, mappings, src_filename):
             if dep_name not in prop_data:
                 prop_data[dep_name] = []
             prop_data[dep_name].append((ns, None))
+
         for dependency in prop_external_dependencies:
             ns, dep_name = ns_fragement(dependency)
             dep_name = to_property_name(dep_name)
@@ -696,37 +652,35 @@ def create_classes(template_file, graph, mappings, src_filename):
         cls_properties_types = []
         for key, value in prop_data.items():
             for item in value:
+                key_prop = key
+                key_class = to_class_name(key)
                 cur_path = generate_import("{}{ps}classes".format(mappings[class_ns]['rel_path'], ps=_DIRSEP),
                                            "{}{ps}properties".format(mappings[item[0]]['rel_path'], ps=_DIRSEP))
-                import_str = "from {}.{} import {}".format(cur_path, key, to_class_name(key))
+                import_str = "from {}.{} import {}".format(cur_path,
+                                                           key_prop,
+                                                           key_class)
 
                 if item[1]:
-                    key_prop = '{}_{}'.format(item[1], key)
-                    key_class = '{}_{}'.format(item[1], to_class_name(key))
-                    arg.append(key_prop)
-                    arg_comment.append("{}:param {}:".format(" " * 8, key_prop))
-                    modules_to_import.append("{} as {}".format(import_str, key_class))
-#                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key_prop, key_class, key_prop))
-                    cls_properties.append("{}self.{} = {}".format(" " * 8, key_prop, key_prop))
-                    cls_properties_types.append("{}self._{} = {}".format(" " * 8, key_prop, key_class))
+                    key_prop = '{}_{}'.format(item[1], key_prop)
+                    key_class = '{}_{}'.format(item[1], key_class)
+                    import_str = "{} as {}".format(import_str, key_class)
                 else:
-                    arg.append(key)
-                    arg_comment.append("{}:param {}:".format(" " * 8, key))
-                    tmp.append(key)
-                    modules_to_import.append(import_str)
-#                    cls_properties.append("{}self.{} = {}({})".format(" " * 8, key, to_class_name(key), key))
-                    cls_properties.append("{}self.{} = {}".format(" " * 8, key, key))
-                    cls_properties_types.append("{}self._{} = {}".format(" " * 8, key, to_class_name(key)))
+                    tmp.append(key_prop)
+
+                arg.append(key_prop)
+                arg_comment.append("{}:param {}:".format(" " * 8, key_prop))
+                modules_to_import.append(import_str)
+                cls_properties.append("{}self.{} = {}".format(" " * 8, key_prop, key_prop))
+                cls_properties_types.append("{}self._{} = {}".format(" " * 8, key_prop, key_class))
 
         if arg:
             arg_init = ["{}=None".format(item) for item in arg]
             argument = " {},".format(", ".join(arg_init))
             argument_comment = "\n{}".format("\n".join(arg_comment))
             class_properties = "\n{}\n".format("\n".join(cls_properties))
-            if len(class_properties_types) == 1:
-                comment = "        # data type"
-            else:
-                comment = "        # data types"
+            comment = "        # data type"
+            if len(class_properties_types) > 1:
+                comment = "{}s".format(comment)
             class_properties_types = "{}\n{}".format(comment, "\n".join(cls_properties_types))
 
         # read template and generate file
@@ -774,16 +728,22 @@ def create_properties(template_file, graph, mappings, src_filename):
         property_internal_vars = ''
 
         property_ns, property_fragment = ns_fragement(property_uri)
-        property_dir = "{}{ps}properties".format(mappings[property_ns]['path'], ps=_DIRSEP)
+        property_dir = "{}{ps}properties".format(mappings[property_ns]['path'],
+                                                 ps=_DIRSEP)
 
-        cls_dependencies = property_class_dependencies(graph=graph, uri=property_uri, allowed_ns=known_namespaces)
+        cls_dependencies = property_class_dependencies(graph=graph,
+                                                       uri=property_uri,
+                                                       allowed_ns=known_namespaces)
 
         # $class_name
         class_name = to_class_name(property_fragment)
         property_name = property_fragment
 
         # $general_comment
-        general_comment = generate_file_comment('property', ns=property_ns, name=class_name, source=src_filename)
+        general_comment = generate_file_comment('property',
+                                                namespace=property_ns,
+                                                name=class_name,
+                                                source=src_filename)
 
         # $class_comment
         class_comment = extract_comment(graph, uri=property_uri)
@@ -821,7 +781,8 @@ def create_properties(template_file, graph, mappings, src_filename):
                 import_str = "from {}.{} import {}".format(cur_path, to_property_name(key), to_class_name(key))
                 if item[1]:
                     parent_properties.append(item[1])
-                    modules_to_import.append("{} as {}".format(import_str, item[1]))
+                    modules_to_import.append("{} as {}".format(import_str,
+                                                               item[1]))
                 else:
                     parent_properties.append(key)
                     modules_to_import.append(import_str)
@@ -870,15 +831,15 @@ def read_template(filename):
     return template
 
 
-def create_dirstruct(home_dir, ns):
+def create_dirstruct(home_dir, namespace):
     """
 
     :param home_dir:
-    :param ns:
+    :param namespace:
     :return:
     """
 
-    ns_path = get_path(namespace=ns)
+    ns_path = get_path(namespace=namespace)
     dir_struct = "ontologies{}{}".format(_DIRSEP, ns_path)
 
     cur_dir = home_dir + '{}{}'.format(_DIRSEP, dir_struct)
@@ -890,7 +851,7 @@ def create_dirstruct(home_dir, ns):
 
     filename = "{}{ps}templates{ps}__init__.tpl".format(home_dir, ps=_DIRSEP)
     template = read_template(filename=filename)
-    content = template.substitute(namespace=ns)
+    content = template.substitute(namespace=namespace)
     filename = "{}{}__init__.py".format(cur_dir, _DIRSEP)
     print(filename, content)
     write_file(filename=filename, content=content)
@@ -910,7 +871,7 @@ def create_kbo(template_dir, target_dir):
     for context in ['classes', 'properties']:
         context_templates = "{}/{}".format(template_dir, context)
         context_directory = "{}/{}".format(target_dir, context)
-        for (dirpath, dirnames, filenames) in os.walk(context_templates):
+        for (_, _, filenames) in os.walk(context_templates):
             for filename in filenames:
                 if filename.endswith('.py'):
                     shutil.copy(src="{}/{}".format(context_templates, filename),
@@ -929,7 +890,7 @@ def create_utils(source_dir, target_dir):
     """
 
     pathlib.Path(target_dir).mkdir(parents=True, exist_ok=True)
-    for (dirpath, dirnames, filenames) in os.walk(source_dir):
+    for (_, _, filenames) in os.walk(source_dir):
         for filename in filenames:
             shutil.copy(src = "{}/{}".format(source_dir, filename),
                         dst = "{}/{}".format(target_dir, filename))
@@ -956,12 +917,17 @@ def determine_namespaces(files):
         classes = graph_classes(graph)
         for cls in classes:
             components = urlsplit(cls)
-            namespaces.add("{}://{}{}".format(components.scheme, components.netloc, components.path))
+            namespaces.add("{}://{}{}".format(components.scheme,
+                                              components.netloc,
+                                              components.path))
         properties = graph_properties(graph)
         for cur_property in properties:
             components = urlsplit(cur_property)
-            namespaces.add("{}://{}{}".format(components.scheme, components.netloc, components.path))
-    namespaces.add('http://www.knora.org/ontology/knora-base') if namespaces else None
+            namespaces.add("{}://{}{}".format(components.scheme,
+                                              components.netloc,
+                                              components.path))
+    if namespaces:
+        namespaces.add('http://www.knora.org/ontology/knora-base')
     return list(namespaces)
 
 
@@ -992,10 +958,8 @@ def namespace_file_structure(namespaces, target_dir):
         except IndexError:
             pass
 
-        if short_code:
-            project_id = "http://rdfh.ch/projects/{}".format(short_code)
-        else:
-            project_id = "http://rdfh.ch/projects/{}".format(cur_dir)
+        scode = short_code if short_code else cur_dir
+        project_id = "http://rdfh.ch/projects/{}".format(scode)
 
         ns_mapping[key] = {'path': '{}{}'.format(target_dir, path),
                            'rel_path': path,
@@ -1044,6 +1008,31 @@ def create_ns_structure(ns_structure):
     return
 
 
+def extract_files_to_process(arguments):
+    """
+
+    :param arguments: arguments (files)
+    :return: list with filenames that we want process
+    """
+    files_to_process = set()
+    for arg in arguments:
+        if not exists(arg):
+            print("'{}' does not exist!".format(arg))
+            continue
+        if isfile(arg):
+            if not arg.startswith('.'):
+                files_to_process.add(os.path.abspath(arg))
+            continue
+        for (dir_path, _, file_names) in os.walk(arg):
+            for file_name in file_names:
+                if not file_name.startswith('.') and file_name.endswith('.ttl'):
+                    data = {'dir_path': dir_path,
+                            'file_name': file_name,
+                            'ps': _DIRSEP}
+                    files_to_process.add(os.path.abspath("{dir_path}{ps}{file_name}".format(**data)))
+    return list(files_to_process)
+
+
 def usage():
     """
     prints information how to use this script (parameters)
@@ -1077,23 +1066,7 @@ def main(argv):
         usage()
         return 2
 
-    files_to_process = set()
-    for arg in args:
-        if not exists(arg):
-            print("'{}' does not exist!".format(arg))
-            continue
-        if isfile(arg):
-            if not arg.startswith('.'):
-                files_to_process.add(os.path.abspath(arg))
-            continue
-        for (dir_path, dir_names, file_names) in os.walk(arg):
-            for file_name in file_names:
-                if not file_name.startswith('.') and file_name.endswith('.ttl'):
-                    data = {'dir_path': dir_path,
-                            'file_name': file_name,
-                            'ps': _DIRSEP}
-                    files_to_process.add(os.path.abspath("{dir_path}{ps}{file_name}".format(**data)))
-    files_to_process = list(files_to_process)
+    files_to_process = extract_files_to_process(args)
     if not files_to_process:
         return 2
 
@@ -1112,13 +1085,14 @@ def main(argv):
     namespaces = determine_namespaces(files_to_process)
     ns_fs_mappings = namespace_file_structure(namespaces, target_dir)
 
-    #    fs_ns_structure = ["{}{}".format(target_dir, value) for key, value in ns_fs_mappings.items()]
     create_ns_structure(ns_fs_mappings)
 
     create_utils(source_dir="{}{}_utils".format(template_dir, _DIRSEP),
                  target_dir="{}{}_utils".format(target_dir, _DIRSEP))
+
+    target_dir = ns_fs_mappings['http://www.knora.org/ontology/knora-base']['path']
     create_kbo(template_dir=template_dir,
-               target_dir=ns_fs_mappings['http://www.knora.org/ontology/knora-base']['path'])
+               target_dir=target_dir)
 
     data = {'template_dir': template_dir, 'ps': _DIRSEP}
     class_template = "{template_dir}{ps}classes{ps}_Resource.tpl".format(**data)
@@ -1132,7 +1106,6 @@ def main(argv):
             print("({})".format(e))
             continue
 
-        # ns = get_namespaces(graph=graph)
         src_filename = file.split(_DIRSEP)[-1]
         create_classes(template_file=class_template,
                        graph=graph,
