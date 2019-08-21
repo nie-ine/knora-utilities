@@ -423,7 +423,6 @@ def property_class_dependencies(graph, uri, allowed_ns=None):
         if URIRef('{}LinkValue'.format(KBO_NS)) in a['objectClassConstraint']:
             return classes
 
-#        value_uri = URIRef("{}Value".format(str(uri)))
         elif str(uri).endswith("Value"):
             subject = URIRef(uri)
             predicate = KBO_NS.objectClassConstraint
@@ -431,18 +430,6 @@ def property_class_dependencies(graph, uri, allowed_ns=None):
                                      predicate=predicate):
                 if str(obj) == '{}LinkValue'.format(KBO_NS):
                     return classes
-
-#        value_uri = URIRef("{}Value".format(str(uri)))
-#        if value_uri in graph_properties(graph):
-#            subject = value_uri
-#            predicate = KBO_NS.objectClassConstraint
-#            for o in graph.objects(subject=subject, predicate=predicate):
-#                if str(o) == '{}hasLinkTo'.format(KBO_NS):
-#                    subj = URIRef(uri)
-#                    pred = KBO_NS.objectClassConstraint
-#                    for o in graph.objects(subject=subj, predicate=pred):
-#                        print(o)
-#                        break
 
         for obj in graph.objects(subject=URIRef(uri),
                                  predicate=RDFS.subPropertyOf):
@@ -539,11 +526,6 @@ def create_classes(template_file, graph, mappings, src_filename):
 
     for class_uri in graph_classes(graph=graph):
         known_namespaces = ""
-        module_import = ""
-        general_comment = ""
-        class_name = ""
-        sub_class_of = ""
-        class_comment = ""
         argument = ""
         argument_comment = ""
         class_internal_vars = ""
@@ -593,8 +575,6 @@ def create_classes(template_file, graph, mappings, src_filename):
                                                            plural,
                                                            " / ".join(labels))
 
-        # $module_import
-
         # $sub_class_of
         cls_data = {}
         for dependency in cls_dependencies:
@@ -625,25 +605,12 @@ def create_classes(template_file, graph, mappings, src_filename):
         sub_class_of = ", ".join(tmp) if tmp else ''
 
         prop_data = {}
-        prop_external_dependencies = set()
         for dependency in prop_dependencies:
             ns, dep_name = ns_fragement(dependency)
-            if ns != class_ns:
-                prop_external_dependencies.add(dependency)
-                continue
             dep_name = to_property_name(dep_name)
             if dep_name not in prop_data:
                 prop_data[dep_name] = []
-            prop_data[dep_name].append((ns, None))
-
-        for dependency in prop_external_dependencies:
-            ns, dep_name = ns_fragement(dependency)
-            dep_name = to_property_name(dep_name)
-            ns_prefix = None
-            if dep_name == class_name or dep_name in prop_data:
-                ns_prefix = mappings[ns]['name']
-            if dep_name not in prop_data:
-                prop_data[dep_name] = []
+            ns_prefix = mappings[ns]['name_ns']
             prop_data[dep_name].append((ns, ns_prefix))
 
         arg = []
@@ -660,12 +627,9 @@ def create_classes(template_file, graph, mappings, src_filename):
                                                            key_prop,
                                                            key_class)
 
-                if item[1]:
-                    key_prop = '{}_{}'.format(item[1], key_prop)
-                    key_class = '{}_{}'.format(item[1], key_class)
-                    import_str = "{} as {}".format(import_str, key_class)
-                else:
-                    tmp.append(key_prop)
+                key_prop = '{}_{}'.format(item[1], key_prop)
+                key_class = '{}_{}'.format(item[1], key_class)
+                import_str = "{} as {}".format(import_str, key_class)
 
                 arg.append(key_prop)
                 arg_comment.append("{}:param {}:".format(" " * 8, key_prop))
@@ -718,13 +682,6 @@ def create_properties(template_file, graph, mappings, src_filename):
                 continue
 
         known_namespaces = ''
-        module_import = ''
-        general_comment = ''
-        class_name = ''
-        sub_property_of = ''
-        class_comment = ''
-        property_ns = ''
-        property_name = ''
         property_internal_vars = ''
 
         property_ns, property_fragment = ns_fragement(property_uri)
@@ -747,8 +704,6 @@ def create_properties(template_file, graph, mappings, src_filename):
 
         # $class_comment
         class_comment = extract_comment(graph, uri=property_uri)
-
-        # $module_import
 
         # $sub_class_of
         cls_data = {}
@@ -958,12 +913,19 @@ def namespace_file_structure(namespaces, target_dir):
         except IndexError:
             pass
 
+        name_ns_parts = cur_dir.split('_')
+        if len(name_ns_parts) > 1:
+            cc_parts = [to_class_name(part) for part in name_ns_parts[1:]]
+            name_ns_parts = [name_ns_parts[0]] + cc_parts
+        name_ns = "".join(name_ns_parts)
+
         scode = short_code if short_code else cur_dir
         project_id = "http://rdfh.ch/projects/{}".format(scode)
 
         ns_mapping[key] = {'path': '{}{}'.format(target_dir, path),
                            'rel_path': path,
                            'name': cur_dir,
+                           'name_ns': name_ns,
                            'short_code': short_code,
                            'project_id': project_id}
 
