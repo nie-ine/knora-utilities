@@ -231,8 +231,12 @@ def __xml_struct__(resource_set, standard_xmlns=None, schema_xsd=None):
                     if prop_info['name'] == 'seqnum':
                         value = resource.__dict__.get(prop_info['name'])
                         if value is not None:
+                            if resource_xmlns == nsmap[None]:
+                                seqnum_tag = 'knoraXmlImport__seqnum'
+                            else:
+                                seqnum_tag = _tag_tpl.format(resource_xmlns, 'knoraXmlImport__seqnum')
                             cur_entry = etree.SubElement(resource_root,
-                                                         'knoraXmlImport__seqnum',
+                                                         seqnum_tag,
                                                          knoraType=prop_info['knoraType'])
                             cur_entry.text = str(value)
                         continue
@@ -275,6 +279,7 @@ def __xml_struct__(resource_set, standard_xmlns=None, schema_xsd=None):
     except Exception as e:
         print(e)
     return
+
 
 def xml_struct(resource_set, standard_xmlns=None, schema_xsd=None, encoding=None):
     """
