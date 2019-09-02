@@ -43,20 +43,6 @@ class DateValue(HasValue):  # Subclass int to get handy functions
             raise TypeError("Wrong data type for DateValue")
         super().__setattr__(key, value)
 
-    # def __repr__(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     return """['date_value': 'GREGORIAN:{:s}']""".format(self._value)
-    #
-    # def __str__(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     return """['date_value': 'GREGORIAN:{:s}']""".format(self._value)
-
     def __json_struct__(self):
         """
 

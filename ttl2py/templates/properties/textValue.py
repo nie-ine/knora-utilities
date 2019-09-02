@@ -1,10 +1,11 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
+from collections import namedtuple
 from .hasValue import HasValue
 
 """
-RichtextValue: definition of a datatype to handle Knora Base Ontology (KBO) text
+RichTextValue: definition of a datatype to handle Knora Base Ontology (KBO) text
 """
 
 __author__ = "Sascha Kaufmann (sascha.kaufmann@unibas.ch)"
@@ -15,6 +16,8 @@ __version__ = "0.0.2"
 __maintainer__ = "NIE-INE (nie-ine.ch)"
 __email__ = "sascha.kaufmann@unibas.ch"
 __status__ = "Prototype"
+
+RichTextValue = namedtuple('RichTextValue', 'mappingId textContent')
 
 
 class TextValue(HasValue):  # Subclass string to get handy functions

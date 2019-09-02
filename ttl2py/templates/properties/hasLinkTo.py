@@ -35,45 +35,6 @@ class HasLinkTo(HasValue):  # Subclass link to get handy functions
         self._property_type = 'link_value'
         self._objectClassConstraint = None
 
-    # def __setattr__(self, key, value):
-    #     """
-    #
-    #     :param key:
-    #     :param value:
-    #     :return:
-    #     """
-    #
-    #     if (key == '_value' and value is not None and
-    #             not (isinstance(value, LinkValue) or isinstance(value, str))):
-    #         raise TypeError("Wrong data type for LinkValue")
-    #     super().__setattr__(key, value)
-
-    # def __repr__(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if self._value:
-    #         try:
-    #             value = self._value.target
-    #         except AttributeError:
-    #             value = self._value
-    #         return """['link_value': '{:s}']""".format(value)
-    #
-    # def __str__(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if self._value:
-    #         try:
-    #             value: str = self._value.target
-    #         except AttributeError:
-    #             value: str = self._value
-    #         if value:
-    #             return """['link_value': '{:s}']""".format(value)
-    #     return
-
     def __json_struct__(self):
         """
 
@@ -98,16 +59,3 @@ class HasLinkTo(HasValue):  # Subclass link to get handy functions
                 if value:
                     return [{self._property_type: value}]
         return None
-
-    # def json(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if self._value:
-    #         try:
-    #             value: str = self._value.target
-    #         except AttributeError:
-    #             value: str = self._value
-    #         if value:
-    #             return """['{:s}': '{:s}']""".format(self._property_type, value)

@@ -258,14 +258,31 @@ def __xml_struct__(resource_set, standard_xmlns=None, schema_xsd=None):
                         if isinstance(value, bool):
                             value = 1 if value is True else 0
                         if prop_info['knoraType'] == 'link_value':
+                            # to use this, please import toe LinkValue definition from
+                            #    knora_base/properties.hasLinkTo.py
+
                             link = etree.SubElement(resource_root, tag)
-                            a = _tag_tpl.format(prop_info['objectClassConstraint'][0],
+                            cur_tag = _tag_tpl.format(prop_info['objectClassConstraint'][0],
                                                 prop_info['objectClassConstraint'][1])
                             etree.SubElement(link,
-                                             a,
+                                             cur_tag,
                                              knoraType=prop_info['knoraType'],
                                              linkType=value.linkType,
                                              target=value.target)
+
+                        elif prop_info['knoraType'] == 'richtext_value' and not isinstance(value, str):
+                            # to use this, please import toe RichTextValue definition from
+                            #    knora_base/properties.textValue.py
+
+                            text_property = etree.SubElement(resource_root,
+                                                             tag,
+                                                             knoraType=prop_info['knoraType'])
+
+                            if value.mappingId:
+                                text_property.set("mapping_id", value.mappingId)
+
+                            text_property.append(value.textContent)
+
                         else:
                             cur_entry = etree.SubElement(resource_root,
                                                          tag,
