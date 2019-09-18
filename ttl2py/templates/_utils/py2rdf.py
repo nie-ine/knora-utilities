@@ -92,14 +92,15 @@ def __xml_struct__(resource_set):
                         # collect missing namespaces
                         prop_type = resource.__dict__.get("_{}".format(attr))
                         prop_dummy = prop_type(None)
-                        property_ns = prop_dummy._namespace # namespace of property (as in ontology)
-                        xmlns_prefix = property_ns.split('/')[-1] # xml namespace prefix of property
-                        namespaces[property_ns] = (xmlns_prefix, property_ns + '#') # add to namespaces
+                        property_ns = prop_dummy._namespace  # namespace of property (as in ontology)
+                        xmlns_prefix = property_ns.split('/')[-1]  # xml namespace prefix of property
+                        namespaces[property_ns] = (xmlns_prefix, property_ns + '#')  # add to namespaces
                         nsmap[xmlns_prefix] = property_ns + '#'  # add to map for xml creation
 
                         property_key = "{}:{}".format(xmlns_prefix, prop_dummy._name) # short namespace and class of property
                         properties[property_key] = {'xmlns': property_ns,
                                                     'name': prop_dummy._name,
+                                                    'class_name': attr,
                                                     'knoraType': prop_dummy._property_type}
 
                     except (TypeError, AttributeError) as e:
@@ -108,6 +109,7 @@ def __xml_struct__(resource_set):
                 property_key = "{}:{}".format(namespaces[resource_ns][0], 'seqnum')
                 properties[property_key] = {'xmlns': namespaces[resource_ns][1],
                                             'name': 'seqnum',
+                                            'class_name': 'seqnum',
                                             'knoraType': 'int_value'}
 
                 resource_info[resource_key] = OrderedDict(sorted(properties.items(), key=lambda t: t[0])) # add metadata about properties
@@ -156,7 +158,7 @@ def __xml_struct__(resource_set):
                 # key: short namespace and property name
                 # prop_info: list of property metadata
 
-                property_value = resource.__dict__.get(prop_info['name'])
+                property_value = resource.__dict__.get(prop_info['class_name'])
                 if prop_info['name'] == 'seqnum':
                     if property_value is not None:
                         seqnum = (prop_info, property_value)
